@@ -1,0 +1,285 @@
+# ~/.bashrc: executed by bash(1) for non-login shells.
+set -eu
+
+
+#export SDS_REPO_ROOT_PATH=$(git rev-parse --show-toplevel)
+
+#
+# Initialize SDS specific env vars and utility/helper sripts 
+#
+source /sds/sds/etc/sds_config
+
+##
+# TERMINAL PROMPT
+##
+initialize_terminal_prompt() {
+    source ${SDS_HELPERS_ROOT}/git-prompt.sh
+
+    run_prompt_commands() {
+        set +o errexit
+        if [[ -f ${HOME}/.sds/prompt_commands ]]; then
+            echo "Executing SDS prompt commands"
+            source ${HOME}/.sds/prompt_commands
+            echo "Completed SDS prompt commands"
+            rm -f ${HOME}/.sds/prompt_commands
+        fi
+    }
+    
+    PROMPT_COMMAND='PS1_CMD1=$(__git_ps1 "[%s]"); run_prompt_commands'; 
+    PS1='\n${PS1_CMD1}\n\w SDS> '
+}
+
+
+
+##
+# GCP AUTHENTICATION
+##
+initialize_gcp_credentials() {
+
+    printf_color "blue" "\nInitializing Google Cloud authentication\n"
+
+    for account in "${SDS_GOOGLE_ACCOUNTS[@]}"; do
+        printf "  - Checking Google Account ${account}\n"
+        printf "    - Testing authentication... "
+
+        AUTH_RESULT=`gcloud auth list --filter=status:ACTIVE --filter="account~${account}" --format="value(account)" --verbosity=error`
+        AUTH_RESULT_CLEAN="${AUTH_RESULT//[^[:alnum:]@.]/}"
+        if [[ "$AUTH_RESULT_CLEAN" == "" ]]; then
+            printf_color "yellow" "NOT AUTHENTICATED.\n\n"
+            gcloud auth login --update-adc ${account}
+        else
+            printf_color "green" "AUTHENTICATED\n\n"
+        fi
+    done
+}
+
+
+##
+# GIT SETUP
+##
+initialize_git() {
+    printf_color "blue" "\nInitializing git\n"
+    # These paths were mounted as volumes in the docker-compose.yaml
+    GITCONFIG_FROM_HOST="/mnt/host/.gitconfig"
+    SSH_FROM_HOST="/mnt/host/.ssh"
+
+    printf "  - Mirroring your .gitconfig from the host into this SDS... "
+    if test -f ${GITCONFIG_FROM_HOST}; then
+        cp ${GITCONFIG_FROM_HOST} /root
+        printf_color "green" "DONE\n"
+    else 
+        printf_color "red" "ERROR\n\n"
+        printf_color "red" "     ERROR: GITCONFIG FILE NOT FOUND\n"
+        printf_color "red" "            SOME GIT ACTIONS WILL NOT WORK. Please, Contact a SDS manager\n\n"
+    fi
+
+    printf "  - Mirroring your .ssh from the host into this SDS......... "
+    if test -d ${SSH_FROM_HOST}; then
+        cp -r ${SSH_FROM_HOST} /root
+        printf_color "green" "DONE\n"
+    else 
+        printf_color "red" "ERROR\n\n"
+        printf_color "red" "     ERROR: SSH FOLDER NOT FOUND\n"
+        printf_color "red" "            SOME GIT ACTIONS WILL NOT WORK. Please, Contact a SDS manager\n\n"
+    fi
+
+    printf "  - Setting the repo folder (${SDS_SDS_ROOT_PATH_IN_CONTAINER}) as a safe directory.... "
+    git config --global --add safe.directory "${SDS_SDS_ROOT_PATH_IN_CONTAINER}"
+    printf_color "green" "DONE\n"
+
+    printf "  - Git Remotes\n"
+    printf "    - $(git remote -v | grep fetch | sed -e 's/[[:space:]]\+/ /g')\n"
+    printf "    - $(git remote -v | grep push  | sed -e 's/[[:space:]]\+/ /g')\n"
+}
+
+##
+# NETWORKING SETUP
+##
+initialize_networking() {
+    printf_color "blue" "\nInitializing networking\n"
+    printf "  - Setting up host aliases... "
+    export HOSTALIASES=/etc/host.aliases
+    printf_color "green" "DONE\n"
+}   
+
+##
+# PANTS shell completion
+##
+function _pants_completions() {
+    local current_word
+    current_word=${COMP_WORDS[COMP_CWORD]}
+
+    # Check if we're completing a relative (.), absolute (/), or homedir (~) path. If so, fallback to readline (default) completion.
+    # This short-circuits the call to the complete goal, which can take a couple hundred milliseconds to complete
+    if [[ $current_word =~ "^(\.|/|~\/)" ]]; then
+        COMPREPLY=()
+    else 
+        # Call the pants complete goal with all of the arguments that we've received so far.
+        COMPREPLY=( $(pants complete -- "${COMP_WORDS[@]}") )
+    fi
+
+    return 0
+}
+
+##
+## PANTS SETUP
+##
+function initialize_pants() {
+    printf_color "blue" "\nInitializing Pants\n"
+    printf "  - Initializing pants... "
+    complete -o default -F _pants_completions pants
+    printf_color "green" "DONE\n"
+}
+
+##
+## NODE SETUP
+##
+initialize_nvm() {
+    printf_color "blue" "\nInitializing NVM (Node) environment\n"
+
+    printf "  - Initializing nvm... "
+
+    export NVM_DIR="$HOME/.nvm"
+    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+    [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+
+    printf_color "green" "DONE\n"
+
+    # printf "  - Available Node versions\n\n"
+    # nvm ls --no-alias
+}
+
+
+##
+## PYTHON SETUP
+##
+initialize_python(){
+    printf_color "blue" "\nInitializing PYENV (Python) environment\n"
+
+    printf "  - Initializing pyenv... "
+    export PYENV_ROOT="$HOME/.pyenv"
+    [[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"
+    eval "$(pyenv init -)"
+    eval "$(pyenv virtualenv-init -)"
+
+    printf_color "green" "DONE\n"
+    printf "  - Available Python versions\n\n"
+    pyenv versions
+}
+
+
+##
+## ENVIRONMENT VARIABLES SETUP
+##
+initialize_environment() {
+    printf_color "blue" "\nInitializing BASH environment\n"
+
+    # SDS VERSION
+    printf "  - SDS version..... "
+    printf_color "green" "${SDS_VERSION_DATE_TAG} (${SDS_RUN_VERSION_TARGET})\n"
+
+    # SET UMASK ACCORDING TO THE HOST MACHINE OS
+    if [[ "$SDS_HOST_UNAME" =~ ^.*WSL.*$ ]]; then
+        # The host is a Windows machine
+        printf "  - SDS host OS..... "; 
+        printf_color "green" "Windows\n"
+
+        # This very open umask is needed on Windows, so files created inside the SDS can be accessed my any user on the host machine 
+        # See task in ClickUp for details: https://app.clickup.com/t/9007160970/PM-2337
+        printf "  - Setting umask... "; 
+        printf_color "green" "0000\n"
+        umask 0000
+
+    elif [[ "$SDS_HOST_UNAME" =~ ^.*Darwin.*$ ]]; then
+        # The host a MacOS
+        printf "  - SDS host OS..... "; 
+        printf_color "green" "MacOS\n"
+
+        printf "  - Setting umask... "; 
+        printf_color "green" "0022\n"
+        umask 0022
+    else 
+        printf_color "red" "  - SDS host OS.... ${SDS_HOST_UNAME}\n"
+        umask 0022
+    fi
+}
+
+##
+## PATH SETUP
+##
+initialize_path(){
+    printf_color "blue" "\nInitializing SDS helper tools path\n"
+    source /opt/sds/set-helpers-path.sh
+    printf "  - Using SDS helper scripts from ${SDS_RUN_HELPERS_SOURCE}\n"
+    printf "    - Helpers root path: ${SDS_HELPERS_ROOT}\n"
+}
+
+print_toast() {                                                                                
+    printf "\n\n" 
+    printf_color "blue" "===============================================================\n"
+    printf_color "blue" "                  INITIALIZING SDS CONSOLE                     \n"
+    printf_color "blue" "===============================================================\n"
+    printf "\n"
+}
+
+##
+## Customize the "ls" command (colors, aliases)
+##
+export SHELL=/bin/bash
+export LS_OPTIONS='--color=auto'
+eval "$(dircolors)"
+alias ls='ls $LS_OPTIONS'
+alias ll='ls $LS_OPTIONS -l'
+alias la='ls $LS_OPTIONS -la'
+
+
+# Some more alias to avoid making mistakes:
+alias rm='rm -i'
+alias cp='cp -i'
+alias mv='mv -i'
+
+# SDS CLI
+function sds() {
+    rm -f ${HOME}/.sds/cli/post_exec.sh
+
+    ${SDS_CLI_ROOT}/sds.sh $@
+
+    if [[ $? -eq 0 ]]; then
+        # Post executions actions
+        if [[ -f ${HOME}/.sds/cli/post_exec.sh ]]; then
+            source ${HOME}/.sds/cli/post_exec.sh
+        fi
+    fi 
+}
+
+# Change directory ot match the directory the user was when SDS was initialized 
+if [ -n "$SDS_START_DIR" ] ; then
+    cd "$SDS_START_DIR"
+fi
+
+# Remove any "prompt commands" that may have been left behind
+# from a previous run of SDS console
+rm -f ${HOME}/.sds/prompt_commands
+
+print_toast
+initialize_path
+initialize_environment
+initialize_python
+initialize_nvm
+initialize_pants
+initialize_networking
+initialize_git
+initialize_gcp_credentials
+initialize_terminal_prompt
+
+printf_color "blue" "\n\n= = = = = = = = = = = = = =  READY TO BUILD GREAT THINGS  = = = = = = = = = = = = = \n" 
+
+unset initialize_path
+unset initialize_environment
+unset initialize_python
+unset initialize_nvm
+unset initialize_pants
+unset initialize_networking
+unset initialize_git
+unset initialize_gcp_credentials
+unset initialize_terminal_prompt

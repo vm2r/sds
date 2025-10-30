@@ -1,0 +1,83 @@
+##
+## PROJECT SPECIFIC VARIABLES
+##
+
+# The name of the container running the SDS shell
+export SDS_SDS_CONTAINER_NAME="sds-container"
+
+# The name of the container running the GCP authentication helper
+export SDS_GCLOUD_CONTAINER_NAME="sds-gcloud-auth"
+
+# The paths and mountpoints to be mounted in the container
+# Format: <host_path>:<container_path>
+
+# export SDS_VOLUMES_MAPPING=(\
+#     "/Users/mauronr/github/vm2r/sds:/sds" \
+#     "/Users/mauronr/github:/github" \
+# )
+
+export SDS_VOLUMES_MAPPING=(\
+    "/Users/mauronr/github/vm2r/sds:/sds" \
+    "/Users/mauronr/github/vm2r/vm2r:/vm2r" \
+    "/Users/mauronr/github/mutuasystems/mutua:/mutua" \
+    "/Users/mauronr/github/cr8d:/cr8d" \
+    "/Users/mauronr/github:/github" \
+)
+
+# The folder in the container that contains the SDS installation
+export SDS_SDS_ROOT_PATH_IN_CONTAINER="/sds/sds"
+
+
+##
+## GCP SPECIFIC VARIABLES
+##
+
+# GCP project domain
+export SDS_GOOGLE_ACCOUNTS=(\
+    "mauro@vm2r.com" \
+    "maurorezende@mutua.systems" \
+)
+
+
+##
+## SDS DOCKER REGISTRY
+##
+
+#
+# GENERAL DOCKER REGISTRY
+#
+
+# The domain of the Docker registry
+export SDS_DOCKER_REGISTRY_DOMAIN="us-central1-docker.pkg.dev"
+
+# The GCP project where the Docker registry is located
+export SDS_DOCKER_REGISTRY_PROJECT="vm2r-ops-cicd-prod"
+
+export SDS_DOCKER_REGISTRY_URL="${SDS_DOCKER_REGISTRY_DOMAIN}/${SDS_DOCKER_REGISTRY_PROJECT}"
+
+#
+# DEVOPS DOCKER REGISTRY
+#
+
+# The repository of the Docker registry for the DevOps projects
+export SDS_DOCKER_REGISTRY_REPO_DEVOPS="docker-devops"
+
+# The URL of the Docker registry
+export SDS_DOCKER_REGISTRY_REPO_DEVOPS_URL="${SDS_DOCKER_REGISTRY_URL}/${SDS_DOCKER_REGISTRY_REPO_DEVOPS}"
+
+# The image name of the Docker registry for the SDS container image
+export SDS_DOCKER_REGISTRY_IMAGE_NAME="sds"
+
+# The URL of the Docker registry
+export SDS_SDS_IMAGE_URL="${SDS_DOCKER_REGISTRY_REPO_DEVOPS_URL}/${SDS_DOCKER_REGISTRY_IMAGE_NAME}"
+
+#
+# RUNTIME DOCKER REGISTRY
+#
+
+# The repository of the Docker registry for the Runtime projects
+export SDS_DOCKER_REGISTRY_REPO_RUNTIME="docker-runtime"
+
+# The URL of the Docker registry for the Runtime projects
+export SDS_DOCKER_REGISTRY_REPO_RUNTIME_URL="${SDS_DOCKER_REGISTRY_URL}/${SDS_DOCKER_REGISTRY_REPO_RUNTIME}"
+
