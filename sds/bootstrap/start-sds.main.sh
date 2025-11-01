@@ -49,7 +49,6 @@ fi
 # Set defaults command line arguments values
 export SDS_RUN_VERSION_TARGET="prod"
 export SDS_RUN_HELPERS_SOURCE="container"
-export SDS_RUN_AUTH_ACTION="keep"
 export SDS_RUN_IMAGE_LOCATION="remote"
 
 # Process command line arguments
@@ -150,7 +149,6 @@ printf "\n\n"
 ##
 ## CHECK IF DOCKER IS RUNNING
 ##
-export DOCKER_CLI_HINTS="false"
 set +eu
 printf_color "blue" "Checking Docker installation\n" 
 

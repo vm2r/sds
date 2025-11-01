@@ -8,7 +8,7 @@
 
 set +eu
 TEMP_FILE=$(mktemp)
-DOCKER_STATUS=$(docker start ${SDS_SDS_CONTAINER_NAME} > ${TEMP_FILE} 2>&1)
+docker start ${SDS_SDS_CONTAINER_NAME} > ${TEMP_FILE} 2>&1
 if [[ $? -eq 0 ]]; then
     printf_color "green" "STARTED\n"
 else
