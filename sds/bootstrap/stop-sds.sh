@@ -8,8 +8,6 @@ set -eu
 ## and then runs a bash shell inside the container
 ##
 
-THIS_SCRIPT_EXECUTION_DIR=$(dirname $0)
-
 #
 # INITIALIZE PATH AND PROJECT SPECIFIC CONFIG
 #
