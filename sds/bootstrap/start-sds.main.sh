@@ -182,6 +182,85 @@ else
     printf "  - Using local SDS Docker image (${SDS_RUN_VERSION_TARGET})\n"
     printf "    - Image: ${SDS_SDS_IMAGE_URL}\n"
     printf "    - Tag  : ${SDS_RUN_VERSION_TARGET}\n\n"
+
+    local_image_full="${SDS_SDS_IMAGE_URL}:${SDS_RUN_VERSION_TARGET}"
+    dockerfile_path="${SDS_REPO_ROOT_PATH}/image-builder/Dockerfile"
+    build_script="${SDS_REPO_ROOT_PATH}/image-builder/build-local.sh"
+
+    # Check if build script exists
+    if [ ! -f "${build_script}" ]; then
+        printf_color "red" "Error: Build script not found at ${build_script}\n"
+        exit -1
+    fi
+
+    # Check if image exists
+    if ! docker inspect --type=image "${local_image_full}" > /dev/null 2>&1; then
+        printf_color "yellow" "Local image ${local_image_full} not found.\n"
+        printf "    - Building image...\n\n"
+        "${build_script}" "${dockerfile_path}" "${SDS_SDS_IMAGE_URL}"
+        
+        if [ $? -ne 0 ]; then
+            printf_color "red" "\nError: Failed to build Docker image.\n"
+            exit -1
+        fi
+        printf_color "green" "\n    - Image built successfully.\n\n"
+    else
+        printf_color "green" "    - Found local image.\n"
+        
+        # Image exists, check if outdated
+        if [ -f "${dockerfile_path}" ]; then
+            # Get Dockerfile modification time
+            # Use different stat syntax for macOS vs Linux/WSL
+            if [[ "$(uname)" == "Darwin" ]]; then
+                # macOS (BSD stat)
+                dockerfile_mtime=$(stat -f %m "${dockerfile_path}")
+            else
+                # Linux/WSL (GNU stat)
+                dockerfile_mtime=$(stat -c %Y "${dockerfile_path}")
+            fi
+            
+            # Get image creation time from Docker
+            image_created_str=$(docker inspect --format='{{.Created}}' "${local_image_full}")
+            
+            # Parse Docker timestamp to epoch (handles ISO 8601 format)
+            # Docker returns format like: 2023-01-15T10:30:45.123456789Z
+            # The 'Z' means UTC timezone
+            
+            # Convert to epoch using date command
+            if [[ "$(uname)" == "Darwin" ]]; then
+                # macOS (BSD date) - we need to handle UTC properly
+                # Strip fractional seconds and Z: "2024-01-15T10:30:45.123Z" -> "2024-01-15T10:30:45"
+                image_created_clean=$(echo "${image_created_str}" | sed 's/\.[0-9]*Z$//')
+                # BSD date doesn't have timezone handling in -f, so we parse as UTC and adjust
+                # Use -u flag to interpret as UTC
+                image_created_epoch=$(TZ=UTC date -j -f "%Y-%m-%dT%H:%M:%S" "${image_created_clean}" "+%s" 2>/dev/null)
+            else
+                # Linux/WSL (GNU date) - can handle ISO format directly
+                image_created_epoch=$(date -d "${image_created_str}" "+%s" 2>/dev/null)
+            fi
+            
+            # Check if date parsing succeeded
+            if [ -z "${image_created_epoch}" ]; then
+                printf_color "yellow" "    - Warning: Could not parse image creation time. Skipping age check.\n"
+            elif [ "${image_created_epoch}" -lt "${dockerfile_mtime}" ]; then
+                printf_color "yellow" "    - Local image is older than Dockerfile.\n"
+                read -p "    - Do you want to rebuild it? [y/N] " -n 1 -r
+                echo
+                if [[ $REPLY =~ ^[Yy]$ ]]; then
+                    printf "\n    - Rebuilding image...\n\n"
+                    "${build_script}" "${dockerfile_path}" "${SDS_SDS_IMAGE_URL}"
+                    
+                    if [ $? -ne 0 ]; then
+                        printf_color "red" "\nError: Failed to rebuild Docker image.\n"
+                        exit -1
+                    fi
+                    printf_color "green" "\n    - Image rebuilt successfully.\n\n"
+                fi
+            else
+                printf_color "green" "    - Image is up to date.\n"
+            fi
+        fi
+    fi
 fi
 
 #
