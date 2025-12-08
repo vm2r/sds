@@ -33,24 +33,6 @@ endif
 ##
 # SDS ARCHITECTURE ELEMENTS SPECIFIC VARIABLES
 ##
-SDS_SERVICE_PATH := $(shell git rev-parse --show-prefix | sed 's/.$$//' )
-
-# Remove "projects" prefix from code projects, 
-SDS_SERVICE_NAME := $(shell echo $(SDS_SERVICE_PATH) | tr \/ \- | sed -e 's/^vm2r-//')
-
-build: ## builds it using Cloud Build
-	$(eval BUILD_SUBSTITUTIONS := $(BUILD_SUBSTITUTIONS),_SDS_SERVICE_NAME=$(SDS_SERVICE_NAME))
-	$(eval BUILD_SUBSTITUTIONS := $(BUILD_SUBSTITUTIONS),_SDS_DOCKERFILE=$(SDS_DOCKERFILE))
-	$(eval BUILD_SUBSTITUTIONS := $(BUILD_SUBSTITUTIONS),_SDS_DOCKER_REGISTRY_REPO_DEVOPS=$(SDS_DOCKER_REGISTRY_REPO_DEVOPS))
-	$(eval BUILD_SUBSTITUTIONS := $(BUILD_SUBSTITUTIONS),_SDS_DOCKER_REGISTRY_REPO_RUNTIME=$(SDS_DOCKER_REGISTRY_REPO_RUNTIME))
-	$(eval BUILD_SUBSTITUTIONS := $(BUILD_SUBSTITUTIONS),_SDS_VERSION_DATE_TAG=$(SDS_VERSION_DATE_TAG))
-	time gcloud builds submit \
-		--config $(CLOUDBUILD_YAML) \
-		--project $(SDS_GCP_PROJECT_ID_DEVOPS_CICD_PROD) \
-		--region $(SDS_CICD_REGION) \
-		--substitutions $(BUILD_SUBSTITUTIONS) \
-		.
-
 
 SDS_DEFAULT_DOCKERFILE := $(SDS_REPO_ROOT_PATH)/image-builder/Dockerfile
 SDS_DEFAULT_SERVICE_NAME := sds-std
@@ -61,15 +43,11 @@ build-local: ## Builds the SDS Docker image locally
 		$(if $(service_name), "$(service_name)", $(SDS_DEFAULT_SERVICE_NAME))
 	
 
-print-vars:
+print-vars: ## Print all env vars visible to Make
 	$(foreach V,$(sort $(.VARIABLES)), $(info $V=$($V) ($(value $V))))
 
-help: ## Display this help message
-	@for f in $(MAKEFILE_LIST); do \
-		echo; \
-		echo $$f; \
-		grep -E '^[a-zA-Z0-9_-]+:.*?[## .*]?$$' $$f; \
-		echo; \
-	done
+
+help: ## Show help message
+	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage: make TARGET [ARGS]\n  Available targets:\033[36m\033[0m\n"} /^[a-zA-Z_-]+:.*?##/ { printf "    \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
 
 .DEFAULT_GOAL := help
