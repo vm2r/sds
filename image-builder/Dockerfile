@@ -21,7 +21,7 @@ RUN set -eu; set +x; \
 	apt-get upgrade $APTGET_OPTIONS; \
 	printf "\n\n\nINSTALLING APT PACKAGES\n\n\n"; \
 	apt-get install $APTGET_OPTIONS \
-		build-essential ca-certificates gnupg curl git
+	build-essential ca-certificates gnupg curl git
 
 
 ##
@@ -36,15 +36,16 @@ FROM base_os AS node-builder-stage
 RUN set -eu; set +x; \
 	printf "\n\n\nINSTALLING NODE\n\n\n"; \
 	curl \
-		--silent --show-error --location \
-		https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh \
-		| bash; \
+	--silent --show-error --location \
+	https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh \
+	| bash; \
 	export NVM_DIR="/root/.nvm"; \
 	[ -s "${NVM_DIR}/nvm.sh" ] && \. "${NVM_DIR}/nvm.sh"; \
 	time (\
-		time nvm install v24.7.0 & \
-		wait; \
+	time nvm install v24.7.0 & \
+	wait; \
 	); 
+
 
 ##
 # THE PYTHON STAGE
@@ -58,17 +59,19 @@ RUN set -eu; set +x; \
 	export PYENV_ROOT="/root/.pyenv"; \
 	export PATH="$PYENV_ROOT/bin:$PATH"; \
 	curl \
-		--silent --show-error --location \
-		https://pyenv.run \
-		| bash; \
+	--silent --show-error --location \
+	https://pyenv.run \
+	| bash; \
 	eval "$(pyenv init - bash)"; \
 	time (\
-		time pyenv install 3.12.8 & \
-		time pyenv install 3.13.7 & \
-		wait; \
-	); \
-	pyenv global 3.12; \
-	pyenv rehash;
+	time pyenv install 3.12.12 & \
+	time pyenv install 3.13.9 & \
+	time pyenv install 3.14.0 & \
+	wait; \
+	); 
+# \
+# pyenv global 3.14; \
+# pyenv rehash;
 
 
 ##
@@ -81,9 +84,9 @@ FROM base_os AS pants-builder-stage
 RUN set -eu; set +x; \
 	printf "\n\n\nINSTALLING PANTS\n\n\n"; \
 	curl \
-		--silent --show-error --location --proto '=https' --tlsv1.2 \
-		https://static.pantsbuild.org/setup/get-pants.sh \
-		| bash -s -- --bin-dir /usr/local/bin;
+	--silent --show-error --location --proto '=https' --tlsv1.2 \
+	https://static.pantsbuild.org/setup/get-pants.sh \
+	| bash -s -- --bin-dir /usr/local/bin;
 
 
 ##
@@ -103,7 +106,7 @@ RUN apt-get update -y && \
 	git; \
 	# Install the Pulumi SDK, including the CLI and language runtimes.
 	curl -fsSL https://get.pulumi.com/ \
-		| bash -s -- --version $PULUMI_VERSION;
+	| bash -s -- --version $PULUMI_VERSION;
 
 ##
 # THE SDS ENVIRONMENT BUILDER STAGE
@@ -120,16 +123,16 @@ RUN set -eu; set +x; \
 	apt-get update $APTGET_OPTIONS; \
 	apt-get upgrade $APTGET_OPTIONS; \
 	apt-get install $APTGET_OPTIONS \
-		ca-certificates gnupg make build-essential \
-		wget curl ncat netcat-traditional tcptraceroute \
-		iptables libc-bin net-tools dnsutils \
-		inetutils-ftp inetutils-traceroute inetutils-ping inetutils-telnet \
-		coreutils git gh \
-		procps lsb-base lsb-release \
-		zsh zplug sudo htop  \
-		less vim nano jq \
-		postgresql-client libpq-dev \
-		bc;
+	ca-certificates gnupg make build-essential \
+	wget curl ncat netcat-traditional tcptraceroute \
+	iptables libc-bin net-tools dnsutils \
+	inetutils-ftp inetutils-traceroute inetutils-ping inetutils-telnet \
+	coreutils git gh \
+	procps lsb-base lsb-release \
+	zsh zplug sudo htop  \
+	less vim nano jq \
+	postgresql-client libpq-dev \
+	bc;
 
 # Install YQ (YAML)
 RUN set -eu; set +x; \
@@ -153,12 +156,13 @@ COPY --from=python-builder-stage /root/.pyenv /root/.pyenv
 RUN set -eu; set +x; \
 	export PYENV_ROOT="/root/.pyenv"; \
 	export PATH="$PYENV_ROOT/bin:$PATH"; \
-	eval "$(pyenv init - bash)"; \
-	pyenv global 3.12; \
-	pyenv rehash; \
-	printf "\n\n\n$(python --version)\n\n\n"; 
+	eval "$(pyenv init - bash)"; 
 ENV PYENV_ROOT="/root/.pyenv"
 ENV PATH=${PYENV_ROOT}/bin:${PATH}
+# \
+# pyenv global 3.12; \
+# pyenv rehash; \
+# printf "\n\n\n$(python --version)\n\n\n"; 
 
 ## Copy from Node builder stage
 COPY --from=node-builder-stage /root/.nvm /root/.nvm
@@ -170,9 +174,9 @@ RUN set -eu; set +x; \
 	printf "\n\n\nINSTALLING GOOGLE CLOUD APT KEYS\n\n\n"; \
 	export GCP_GPG_KEY="/usr/share/keyrings/cloud.google.gpg"; \
 	curl \
-		--silent --show-error --location \
-		https://packages.cloud.google.com/apt/doc/apt-key.gpg \
-		| gpg --dearmor -o ${GCP_GPG_KEY};\
+	--silent --show-error --location \
+	https://packages.cloud.google.com/apt/doc/apt-key.gpg \
+	| gpg --dearmor -o ${GCP_GPG_KEY};\
 	echo "deb [signed-by=${GCP_GPG_KEY}] https://packages.cloud.google.com/apt cloud-sdk main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list ; \
 	export GCSFUSE_REPO="gcsfuse-$(lsb_release -c -s)"; \
 	echo "deb [signed-by=${GCP_GPG_KEY}] https://packages.cloud.google.com/apt ${GCSFUSE_REPO} main" | tee -a /etc/apt/sources.list.d/gcsfuse.list; \
@@ -206,8 +210,8 @@ RUN set -eu; set +x; \
 	gcloud config set metrics/environment github_docker_image; \
 	gcloud components install -q beta; \
 	rm -rf $(find google-cloud-sdk/ -regex ".*/__pycache__") \
-			google-cloud-sdk/.install/.backup \
-			google-cloud-sdk/bin/anthoscli; \
+	google-cloud-sdk/.install/.backup \
+	google-cloud-sdk/bin/anthoscli; \
 	gcloud --version
 
 
@@ -221,10 +225,10 @@ RUN set -eu; set +x; \
 	apt-get install gcsfuse $APTGET_OPTIONS; \
 	printf "\n\n\nCLEANING UP APT\n\n\n"; 	# THIS IS THE LAST APT LAYER SO CLEANUP all APT STUFF \
 	rm -rf /var/lib/apt/lists/* \
-			/var/cache/apt/* \
-    		/usr/share/doc/* \
-    		/usr/share/man/* \
-    		/usr/share/locale/*; \
+	/var/cache/apt/* \
+	/usr/share/doc/* \
+	/usr/share/man/* \
+	/usr/share/locale/*; \
 	apt-get autoremove $APTGET_OPTIONS; \
 	apt-get clean $APTGET_OPTIONS; \
 	apt-get autoclean $APTGET_OPTIONS; \
