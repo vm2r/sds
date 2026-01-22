@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+set -eu
+
+##
+## PROJECT SPECIFIC VARIABLES
+##
+
+# The name of the Docker image and container running the SDS shell
+# Usually sds-<some suffix>
+export SDS_SDS_DOCKER_NAME="sds-xyz"
+
+
+#
+# VOLUMES TO BE MOUNTED
+#
+# The paths and mountpoints to be mounted in the container
+# Format: <host_path>:<container_path>
+
+export SDS_VOLUMES_MAPPING=(\
+    "/Users/mauronr/github/vm2r/vm2r:/vm2r" \
+    "/Users/mauronr/github/mutuasystems/mutua:/mutua" \
+    "/Users/mauronr/github/cr8d:/cr8d" \
+    "/Users/mauronr/github:/github" \
+)
+
+#
+# TCP PORTS TO BE PUBLISHED
+#
+export SDS_TCP_PORTS_PUBLISH=(
+    "8000-8010"
+    "8080"
+    "55432"
+    "33306"
+)
+
+
+# The folder in the container that contains the SDS installation
+export SDS_SDS_ROOT_PATH_IN_CONTAINER="/sds"
+
+
+##
+## GCP SPECIFIC VARIABLES
+##
+
+# Google Cloud accounts to be authenticated in the container
+export SDS_GOOGLE_ACCOUNTS=(\
+    "mauro@vm2r.com" \
+    "maurorezende@mutua.systems" \
+    "mauro@42engine.com"
+)
+
+##
+## SDS SPECIFIC VARIABLES
+## Edit these carefully
+##
+export SDS_SDS_ROOT_VOLUME_NAME="${SDS_SDS_DOCKER_NAME}-root-volume"
