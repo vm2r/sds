@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+set -eu
+
+##
+## sds.conf.example
+##
+## Example configuration file for the SDS container project specific variables
+##
+## This file should be copied to 'sds.conf' and modified to match the project's specific configuration
+##
+
+current_repo_path=$(git rev-parse --show-toplevel)
+current_repo_name=$(basename $(git remote get-url origin) .git)
+
+#
+# GCP SPECIFIC VARIABLES
+#
+
+# Google Cloud accounts to be authenticated in the container
+# Example:
+# export SDS_GOOGLE_ACCOUNTS=(\
+#     "user_1@gmail.com" \
+#     "user_2@gmail.com" \
+#     "user_3@gmail.com"
+# )
+export SDS_GOOGLE_ACCOUNTS=(\
+    "user_1@gmail.com"
+)
+
+
+#
+# CONTAINER SPECIFIC VARIABLES
+#
+
+# The TCP ports the SDS container will publish to the host machine
+# Example:
+# export SDS_TCP_PORTS_PUBLISH=(\
+#     "8000-8010" \
+#     "8080" \
+#     "55432" \
+#     "33306"
+# )
+export SDS_TCP_PORTS_PUBLISH=(
+)
+
+# The paths and mountpoints to be mounted in the container
+# Format: <host_path>:<container_path>
+# Example:
+# export SDS_VOLUMES_MAPPING=(\
+#     "/Users/user/github/org_1/repo_1:/repo_1" \
+#     "/Users/user/github/org_1/repo_2:/repo_2" \
+#     "/Users/user/github/org_2/repo_3:/repo_3"
+# )
+export SDS_VOLUMES_MAPPING=(\
+)
+

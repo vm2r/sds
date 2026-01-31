@@ -1,0 +1,328 @@
+##
+## bashrc
+##
+## Bash initialization script for the SDS (Standardized Development Stack) Docker container.
+##
+## This script is executed when a non-login bash shell starts within the SDS container.
+## It initializes and configures the complete development environment needed for SDS operations.
+##
+## Main responsibilities:
+##   - Environment setup: Sets umask, PATH, and SDS-specific environment variables
+##   - GCP authentication: Verifies and initializes Google Cloud credentials
+##   - Git configuration: Mirrors host .gitconfig and .ssh, sets safe directories
+##   - Development tools: Initializes Python (pyenv), Node (nvm), and Pants build system
+##   - Networking: Configures host aliases and network settings
+##   - Terminal: Sets up custom prompt with git branch info and command execution hooks
+##   - CLI tools: Defines the 'sds' command wrapper with post-execution hooks
+##
+## The script executes a series of initialization functions at startup and then
+## unsets them to keep the environment clean. It also handles cross-platform
+## differences between MacOS and Windows (WSL) host systems.
+##
+
+set -eu
+
+#
+# Initialize SDS specific env vars and utility/helper sripts 
+#
+
+
+#
+# TERMINAL PROMPT
+#
+initialize_terminal_prompt() {
+    source ${SDS_HELPERS_ROOT}/git-prompt.sh
+
+    run_prompt_commands() {
+        set +o errexit
+        if [[ -f ${HOME}/.sds/prompt_commands ]]; then
+            echo "Executing SDS prompt commands"
+            source ${HOME}/.sds/prompt_commands
+            echo "Completed SDS prompt commands"
+            rm -f ${HOME}/.sds/prompt_commands
+        fi
+    }
+    
+    PROMPT_COMMAND='PS1_CMD1=$(__git_ps1 "[%s]"); run_prompt_commands'; 
+    PS1='\n${PS1_CMD1}\n\w SDS> '
+}
+
+
+#
+# GCP AUTHENTICATION
+#
+initialize_gcp_credentials() {
+    set +e
+    printf_color "blue" "\nInitializing Google Cloud authentication\n"
+
+    if [[ ! -n "${SDS_GOOGLE_ACCOUNTS:-}" ]]; then
+        for account in "${SDS_GOOGLE_ACCOUNTS[@]}"; do
+            printf "  - Checking Google Account.... ${account}\n"
+            printf "    - Testing authentication... "
+
+            AUTH_RESULT=`gcloud auth list \
+                --filter=status:ACTIVE \
+                --filter="account~${account}" \
+                --format="value(account)" \
+                --verbosity=error`
+
+            AUTH_RESULT_CLEAN="${AUTH_RESULT//[^[:alnum:]@.]/}"
+
+            if [[ "$AUTH_RESULT_CLEAN" == "" ]]; then
+                printf_color "yellow" "NOT AUTHENTICATED.\n\n"
+
+                printf_color "yellow" "    - FOLLOW THE INSTRUCTIONS BELOW WITH GOOGLE ACCOUNT: ${account}\n\n"
+
+                gcloud auth login --update-adc ${account}
+                if [[ $? -ne 0 ]]; then
+                    printf_color "red" "\n\n    - ERROR: Could not authenticate with Google Cloud \"${account}\".\n\n"
+                fi
+            else
+                printf_color "green" "AUTHENTICATED\n\n"
+            fi
+            printf "\n"
+        done
+    fi
+    set -e
+}
+
+
+#
+# GITHUB
+#
+initialize_git() {
+    printf_color "blue" "\nInitializing git\n"
+    # These paths were mounted as volumes in the docker-compose.yaml
+    GITCONFIG_FROM_HOST="/mnt/host/.gitconfig"
+    SSH_FROM_HOST="/mnt/host/.ssh"
+
+    printf "  - Mirroring your .gitconfig from the host into this SDS... "
+    if test -f ${GITCONFIG_FROM_HOST}; then
+        cp ${GITCONFIG_FROM_HOST} /root
+        printf_color "green" "DONE\n"
+    else 
+        printf_color "red" "ERROR\n\n"
+        printf_color "red" "     ERROR: GITCONFIG FILE NOT FOUND\n"
+        printf_color "red" "            SOME GIT ACTIONS WILL NOT WORK. Please, Contact a SDS manager\n\n"
+    fi
+
+    printf "  - Mirroring your .ssh from the host into this SDS......... "
+    if test -d ${SSH_FROM_HOST}; then
+        cp -r ${SSH_FROM_HOST} /root
+        printf_color "green" "DONE\n"
+    else 
+        printf_color "red" "ERROR\n\n"
+        printf_color "red" "     ERROR: SSH FOLDER NOT FOUND\n"
+        printf_color "red" "            SOME GIT ACTIONS WILL NOT WORK. Please, Contact a SDS manager\n\n"
+    fi
+
+    printf "  - Setting the repo folder (${SDS_SDS_ROOT_PATH_IN_CONTAINER}) as a safe directory.... "
+    git config --global --add safe.directory "${SDS_SDS_ROOT_PATH_IN_CONTAINER}"
+    printf_color "green" "DONE\n"
+
+    printf "  - Git Remotes\n"
+    printf "    - $(git remote -v | grep fetch | sed -e 's/[[:space:]]\+/ /g')\n"
+    printf "    - $(git remote -v | grep push  | sed -e 's/[[:space:]]\+/ /g')\n"
+}
+
+
+#
+# NETWORKING
+#
+initialize_networking() {
+    printf_color "blue" "\nInitializing networking\n"
+    printf "  - Setting up host aliases... "
+    export HOSTALIASES=/etc/host.aliases
+    printf_color "green" "DONE\n"
+}   
+
+
+#
+# PANTS SHELL COMPLETION
+#
+function _pants_completions() {
+    local current_word
+    current_word=${COMP_WORDS[COMP_CWORD]}
+
+    # Check if we're completing a relative (.), absolute (/), or homedir (~) path. If so, fallback to readline (default) completion.
+    # This short-circuits the call to the complete goal, which can take a couple hundred milliseconds to complete
+    if [[ $current_word =~ "^(\.|/|~\/)" ]]; then
+        COMPREPLY=()
+    else 
+        # Call the pants complete goal with all of the arguments that we've received so far.
+        COMPREPLY=( $(pants complete -- "${COMP_WORDS[@]}") )
+    fi
+
+    return 0
+}
+
+
+#
+# PANTS
+#
+function initialize_pants() {
+    printf_color "blue" "\nInitializing Pants\n"
+    printf "  - Initializing pants... "
+    complete -o default -F _pants_completions pants
+    printf_color "green" "DONE\n"
+}
+
+#
+# NODE
+#
+initialize_nvm() {
+    printf_color "blue" "\nInitializing NVM (Node) environment\n"
+
+    printf "  - Initializing nvm... "
+
+    export NVM_DIR="$HOME/.nvm"
+    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+    [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+
+    printf_color "green" "DONE\n"
+
+    # printf "  - Available Node versions\n\n"
+    # nvm ls --no-alias
+}
+
+
+#
+# PYTHON
+#
+initialize_python(){
+    printf_color "blue" "\nInitializing PYENV (Python) environment\n"
+
+    printf "  - Initializing pyenv... "
+    export PYENV_ROOT="$HOME/.pyenv"
+    [[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"
+    eval "$(pyenv init -)"
+    eval "$(pyenv virtualenv-init -)"
+    pyenv global 3.14;
+    pyenv rehash;
+
+    printf_color "green" "DONE\n"
+    printf "  - Available Python versions\n\n"
+    pyenv versions
+}
+
+
+#
+# ENVIRONMENT VARIABLES
+#
+initialize_environment() {
+    printf_color "blue" "\nInitializing BASH environment\n"
+
+    # SDS VERSION
+    printf "  - SDS version..... "
+    printf_color "green" "${SDS_VERSION_DATE_TAG} (${SDS_RUN_VERSION_TARGET})\n"
+
+    # SET UMASK ACCORDING TO THE HOST MACHINE OS
+    if [[ "$SDS_HOST_UNAME" =~ ^.*WSL.*$ ]]; then
+        # The host is a Windows machine
+        printf "  - SDS host OS..... "; 
+        printf_color "green" "Windows\n"
+
+        # This very open umask is needed on Windows, so files created inside the SDS can be accessed my any user on the host machine 
+        printf "  - Setting umask... "; 
+        printf_color "green" "0000\n"
+        umask 0000
+
+    elif [[ "$SDS_HOST_UNAME" =~ ^.*Darwin.*$ ]]; then
+        # The host a MacOS
+        printf "  - SDS host OS..... "; 
+        printf_color "green" "MacOS\n"
+
+        printf "  - Setting umask... "; 
+        printf_color "green" "0022\n"
+        umask 0022
+    else 
+        printf_color "red" "  - SDS host OS.... ${SDS_HOST_UNAME}\n"
+        umask 0022
+    fi
+}
+
+#
+# PATH
+#
+initialize_path(){
+    printf_color "blue" "\nInitializing SDS helper tools path\n"
+
+    if [[ -z "${SDS_SDS_ROOT_PATH_IN_CONTAINER}" ]]; then
+        printf_color "red" "\n\nERROR: SDS_SDS_ROOT_PATH_IN_CONTAINER is not set.\n\n"
+        exit 1
+    fi
+
+    export SDS_HELPERS_ROOT="${SDS_SDS_ROOT_PATH_IN_CONTAINER}/opt/sds"
+    export PATH="${SDS_SDS_CLI_ROOT}:${SDS_HELPERS_ROOT}:${PATH}"
+
+    printf "  - Helpers root path: ${SDS_HELPERS_ROOT}\n"
+}
+
+print_toast() {                                                                 
+    printf "\n\n" 
+    printf_color "blue" "===============================================================\n"
+    printf_color "blue" "                  INITIALIZING SDS SHELL                       \n"
+    printf_color "blue" "===============================================================\n"
+    printf "\n"
+}
+
+#
+# COMMAND ALIASES
+#
+export SHELL=/bin/bash
+export LS_OPTIONS='--color=auto'
+eval "$(dircolors)"
+alias ls='ls $LS_OPTIONS'
+alias ll='ls $LS_OPTIONS -l'
+alias la='ls $LS_OPTIONS -la'
+alias rm='rm -i'
+alias cp='cp -i'
+alias mv='mv -i'
+
+#
+# Change to the directory the user was when SDS was initialized 
+#
+if [ -n "$SDS_START_DIR" ] ; then
+    cd "$SDS_START_DIR"
+fi
+
+#
+# Remove any "prompt commands" that may have been left behind
+# from a previous run of SDS console
+#
+rm -f ${HOME}/.sds/prompt_commands
+
+print_toast
+
+printf_color "blue" "Loading SDS environment variables\n"
+
+printf "  - Reading SDS project config file (${SDS_SDS_ROOT_PATH_IN_CONTAINER}/etc/sds.conf)............. "
+source ${SDS_SDS_ROOT_PATH_IN_CONTAINER}/etc/sds.conf
+printf_color "green" "DONE\n"
+
+printf "  - Reading SDS container env vars (${SDS_SDS_ROOT_PATH_IN_CONTAINER}/etc/sds.env)... "
+source ${SDS_SDS_ROOT_PATH_IN_CONTAINER}/etc/sds.env
+printf_color "green" "DONE\n"
+
+
+initialize_path
+initialize_environment
+initialize_python
+initialize_nvm
+initialize_pants
+initialize_networking
+initialize_git
+initialize_gcp_credentials
+initialize_terminal_prompt
+
+printf_color "blue" "\n\n= = = = = = = = = = = = = =  READY TO BUILD GREAT THINGS  = = = = = = = = = = = = = \n" 
+
+unset initialize_path
+unset initialize_environment
+unset initialize_python
+unset initialize_nvm
+unset initialize_pants
+unset initialize_networking
+unset initialize_git
+unset initialize_gcp_credentials
+unset initialize_terminal_prompt
