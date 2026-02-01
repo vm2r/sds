@@ -2,6 +2,13 @@
 
 The SDS CLI tool is a modular command-line interface designed to manage development environments and repository operations. It provides a consistent way to interact with various project components, including version tracking, environment status checks, and streamlined workflows for repository synchronization and service management.
 
+## DESIGN PHILOSOPHY
+### Zero External Dependencies
+The SDS CLI is built using **only the Python 3 Standard Library**. 
+- **No `pip install` required**: Works out-of-the-box on any system with Python 3.
+- **Portability**: Relies only on system-level tools like `git` and `vi`.
+- **Security & Speed**: Minimal footprint ensures fast execution and reduces the attack surface from third-party packages.
+
 ## SYNOPSIS
 `sds [COMMAND] [SUBCOMMAND] [ARGUMENTS]`
 
@@ -30,6 +37,12 @@ Service operations.
   Build a specific service from a branch (defaults to `main`).
 - **`deploy <service_name> <source_tag> <destination_env>`**
   Deploy a service version to a target environment (e.g., staging, production).
+
+### `config`
+Configuration management.
+
+- **`edit`**
+  Edit the `sds.conf` configuration file using `vi`.
 
 ## OPTIONS
 - **`-h`, `--help`**

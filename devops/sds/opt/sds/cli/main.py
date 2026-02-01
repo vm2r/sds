@@ -1,6 +1,6 @@
 import argparse
 import sys
-from commands import version, status, repo, service
+from commands import version, status, repo, service, config
 
 def get_deepest_parser(parser, args):
     """
@@ -29,6 +29,7 @@ def main():
     status.register(subparsers)
     repo.register(subparsers)
     service.register(subparsers)
+    config.register(subparsers)
 
     args = parser.parse_args()
 
