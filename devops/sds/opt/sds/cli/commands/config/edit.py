@@ -13,7 +13,7 @@ def run_config_edit(args):
     # Configuration file is always at [REPO_ROOT]/devops/sds/etc/sds.conf
     config_path = os.path.join(repo_root, "devops/sds/etc/sds.conf")
     
-    print(f"\n{BLUE}Sds Configuration File{RESET}")
+    print(f"\n{BLUE}SDS Configuration File{RESET}")
     print(f"Path: {config_path}\n")
     
     if not os.path.exists(config_path):
