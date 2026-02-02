@@ -1,0 +1,6 @@
+.DS_Store
+cloud-sql-proxy
+sds.conf
+*.pyc
+__pycache__
+*.bak
