@@ -108,7 +108,6 @@ fi
 # Start the SDS container
 docker run -d \
     --name ${SDS_SDS_DOCKER_NAME} \
-    --platform linux/amd64 \
     ${tcp_ports_args} \
     --env-file ${DOCKER_ENV_FILE} \
     --workdir /${this_repo_name} \

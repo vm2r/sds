@@ -24,7 +24,7 @@ fi
 # Add the SDS utilities folder to the PATH
 PATH=${PATH}:${SDS_ROOT_IN_HOST}/opt/sds
 
-# Check if file exists
+# Check if sds.conf file exists
 printf_color "blue" "SDS configuration\n"
 printf "  - Checking sds.conf file........ "
 if [ ! -f "${SDS_ROOT_IN_HOST}/etc/sds.conf" ]; then
