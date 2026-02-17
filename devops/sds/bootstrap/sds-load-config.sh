@@ -19,7 +19,10 @@ if [ -z "${SDS_ROOT_IN_HOST:-}" ]; then
 fi
 
 if [ ! -f "${SDS_ROOT_IN_HOST}/etc/sds.conf" ]; then
-    printf_color "red" "\nFATAL ERROR: 'sds.conf' file not found in ${SDS_ROOT_IN_HOST}/etc\n"
+    printf_color "red" "\nFATAL ERROR: 'sds.conf' file not found in ${SDS_ROOT_IN_HOST}/etc\n\n"
+
+    printf_color "red" "Have you run 'make sds-init'?\n\n"
+
     printf_color "red" "Please, create it from a copy of 'sds.conf.example' before running this script ($0).\n\n"
     printf_color "red" "ABORTING\n\n"
     exit 101
