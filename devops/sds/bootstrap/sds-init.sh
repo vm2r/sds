@@ -24,10 +24,10 @@ fi
 # Add the SDS utilities folder to the PATH
 PATH=${PATH}:${SDS_ROOT_IN_HOST}/opt/sds
 
-FILES_TO_COPY=(
-    ("sds.conf.example" "sds.conf")
-    ("sds.bashrc.example" "sds.bashrc")
-    ("Dockerfile.example" "Dockerfile")
+FILES_TO_COPY=( \
+    ("sds.conf.example" "sds.conf") \
+    ("sds.bashrc.example" "sds.bashrc") \
+    ("Dockerfile.example" "Dockerfile") \
 )
 
 for file in ${FILES_TO_COPY[@]}; do
