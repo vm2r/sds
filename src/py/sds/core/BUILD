@@ -1,0 +1,10 @@
+python_sources(
+    sources=[
+        "**/*.py",
+        "!BUILD",
+        "!test_*.py",
+    ],
+    dependencies=[
+        "src/py/3rdparty:core",
+    ]
+)

@@ -4,3 +4,4 @@ sds.conf
 *.pyc
 __pycache__
 *.bak
+*.code-workspace

@@ -38,7 +38,7 @@ def run_repo_merge_upstream(args=None):
 
     # 3. Merges 'upstream/main' into the local branch (fast-forward only).
     print(f"\n{BLUE}Merging updated from upstream into local branch{RESET}")
-    run_git(['git', 'merge', 'upstream/main', '--ff-only'], "  - git merge upstream/main --ff-only")
+    run_git(['git', 'rebase', 'upstream/main'], "  - git rebase upstream/main")
 
     # 4. Pushes the updated branch to 'origin'.
     print(f"\n{BLUE}Pushing updated branch to origin{RESET}")

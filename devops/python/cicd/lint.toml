@@ -1,0 +1,22 @@
+[tool.black]
+line-length = 120
+exclude = "^(.*/migrations/.*.py|.*/idl/.*)$"
+target-version = ["py314"]
+
+[tool.isort]
+profile = "black"
+py_version = 314
+force_grid_wrap = 2
+line_length = 120
+include_trailing_comma = "True"
+multi_line_output = 3
+combine_as_imports = "True"
+known_first_party = ["mutua"]
+known_local_folder = ["src"]
+
+[flake8]
+max-line-length = 120
+max-complexity = 10
+
+
+[mypy]
