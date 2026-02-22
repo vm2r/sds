@@ -6,9 +6,10 @@ This project uses a Standardized Development Stack (SDS) running inside a Docker
 ### Running Commands
 To run any command inside the environment, use the provided workflow:
 - **Workflow:** [/sds-exec](file:///.agents/workflows/sds-exec.md)
-- **Manual Command:** `docker exec -it sds-deepsurgery <command>`
+- **Manual Command:** `docker exec -it sds-<repo-name> <command>`
 
 For AI agents: Please always check `.agents/workflows/sds-exec.md` before executing terminal commands.
+
 
 
 ## How to use it?

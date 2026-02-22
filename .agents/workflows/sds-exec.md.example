@@ -1,0 +1,23 @@
+---
+description: How to execute commands inside the SDS Docker container
+---
+To execute any development commands (like `pants`, `gcloud`, `pulumi`, `isort`, etc.) in this project, you must run them inside the `sds-{{REPO_NAME}}` container.
+
+**Full Command Format:**
+```bash
+docker exec -it sds-{{REPO_NAME}} <command>
+```
+
+**For non-interactive executions (like from a bot or script):**
+```bash
+docker exec sds-{{REPO_NAME}} <command>
+```
+
+**Common Examples:**
+- Run pants: `docker exec sds-{{REPO_NAME}} ./pants --version`
+- Run isort: `docker exec sds-{{REPO_NAME}} isort .`
+- Run lint: `docker exec sds-{{REPO_NAME}} ./pants lint ::`
+
+**Mount Information:**
+- The repository root is mounted at `/{{REPO_NAME}}` inside the container.
+- The default working directory is `/{{REPO_NAME}}`.
