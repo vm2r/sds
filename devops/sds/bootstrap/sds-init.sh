@@ -24,62 +24,39 @@ fi
 # Add the SDS utilities folder to the PATH
 PATH=${PATH}:${SDS_ROOT_IN_HOST}/opt/sds
 
+printf_color "blue" "INITIALIZING THE SDS ENVIRONMENT\n\n"
+
+
+printf_color "blue" "Copying template files\n"
+# List of files to copy: "absolute-folder:example-file:destination-file"
 FILES_TO_COPY=( \
-    ("sds.conf.example" "sds.conf") \
-    ("sds.bashrc.example" "sds.bashrc") \
-    ("Dockerfile.example" "Dockerfile") \
+    "${SDS_ROOT_IN_HOST}/etc:sds.conf.example:sds.conf" \
+    "${SDS_ROOT_IN_HOST}/etc:sds.bashrc.example:sds.bashrc" \
+    "${SDS_ROOT_IN_HOST}/image-builder:Dockerfile.example:Dockerfile" \
+    "${CURR_REPO_ROOT_PATH}/devops/python/cicd:lint.toml.example:lint.toml" \
 )
 
-for file in ${FILES_TO_COPY[@]}; do
-    printf_color "blue" "${file[1]}\n"
-    printf "  - Checking ${file[1]}........ "
-    if [ ! -f "${SDS_ROOT_IN_HOST}/etc/${file[1]}" ]; then
+for entry in "${FILES_TO_COPY[@]}"; do
+    IFS=":" read -r folder example destination <<< "$entry"
+    
+    target_path="${folder}/${destination}"
+    source_path="${folder}/${example}"
+
+    printf_color "blue" "  - ${destination}\n"
+    printf "    - Checking '${target_path}'... "
+    
+    if [ ! -f "$target_path" ]; then
         printf_color "yellow" "NOT FOUND\n"
-        printf '    - Creating ${file[1]} from ${file[0]}... '
-        cp "${SDS_ROOT_IN_HOST}/etc/${file[0]}" "${SDS_ROOT_IN_HOST}/etc/${file[1]}"
+        printf "    - Creating '${destination}' from '${example}'... "
+        cp "$source_path" "$target_path"
         printf_color "green" "CREATED\n\n"
-        printf_color "yellow" "\tPlease, edit 'devops/sds/etc/${file[1]}' to match your needs.\n\n"
+        printf_color "yellow" "      Please, edit file\n\n"
+        printf_color "yellow" "        ${target_path}\n\n"
+        printf_color "yellow" "      to match your needs.\n\n"
     else
         printf_color "green" "FOUND\n"
     fi
+    echo
 done
-
-# # Check if sds.conf file exists
-# printf_color "blue" "SDS configuration\n"
-# printf "  - Checking sds.conf file........ "
-# if [ ! -f "${SDS_ROOT_IN_HOST}/etc/sds.conf" ]; then
-#     printf_color "yellow" "NOT FOUND\n"
-#     printf '    - Creating sds.conf from sds.conf.example... '
-#     cp "${SDS_ROOT_IN_HOST}/etc/sds.conf.example" "${SDS_ROOT_IN_HOST}/etc/sds.conf"
-#     printf_color "green" "CREATED\n\n"
-#     printf_color "yellow" "\tPlease, edit 'devops/sds/etc/sds.conf' to match your needs.\n\n"
-# else
-#     printf_color "green" "FOUND\n"
-# fi
-
-# # Check if the BASHRC file exists
-# printf_color "blue" "SDS BASHRC\n"
-# printf "  - Checking sds.bashrc file... "
-# if [ ! -f "${SDS_ROOT_IN_HOST}/etc/sds.bashrc" ]; then
-#     printf_color "yellow" "NOT FOUND\n"
-#     printf '    - Creating sds.bashrc from sds.bashrc.example... '
-#     cp "${SDS_ROOT_IN_HOST}/etc/sds.bashrc.example" "${SDS_ROOT_IN_HOST}/etc/sds.bashrc"
-#     printf_color "green" "CREATED\n\n"
-#     printf_color "yellow" "\tPlease, edit 'devops/sds/etc/sds.bashrc' to match your needs.\n\n"
-# else
-#     printf_color "green" "FOUND\n"
-# fi
-
-# # Check if SDS Dockerfile exists
-# printf_color "blue" "SDS Dockerfile\n"
-# printf "  - Checking SDS Dockerfile....... "
-# if [ ! -f "${SDS_ROOT_IN_HOST}/image-builder/Dockerfile" ]; then
-#     printf_color "yellow" "NOT FOUND\n"
-#     printf '    - Creating Dockerfile from Dockerfile.example... '
-#     cp "${SDS_ROOT_IN_HOST}/image-builder/Dockerfile.example" "${SDS_ROOT_IN_HOST}/image-builder/Dockerfile"
-#     printf_color "green" "CREATED\n\n"
-#     printf_color "yellow" "\tPlease, edit 'devops/sds/image-builder/Dockerfile' to match your needs.\n\n"
-# else
-#     printf_color "green" "FOUND\n"
-# fi
+echo
 
