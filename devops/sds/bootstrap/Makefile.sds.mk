@@ -21,6 +21,9 @@ SHELL := /bin/bash
 sds-init: ## Initialize the SDS environment
 	@$(SDS_INIT_SCRIPT)
 
+sds-init-revert: ## Revert the SDS environment initialization (delete generated files)
+	@$(SDS_INIT_SCRIPT) --revert
+
 sds-start: ## Start the latest SDS environment
 	@$(MAKE) sds-start-tag tag="latest"
 
