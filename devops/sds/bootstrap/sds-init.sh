@@ -38,6 +38,7 @@ FILES_TO_COPY=( \
     "${SDS_ROOT_IN_HOST}/etc:sds.conf.example:sds.conf" \
     "${SDS_ROOT_IN_HOST}/etc:sds.bashrc.example:sds.bashrc" \
     "${SDS_ROOT_IN_HOST}/image-builder:Dockerfile.example:Dockerfile" \
+    "${CURR_REPO_ROOT_PATH}:pants.toml.example:pants.toml" \
     "${CURR_REPO_ROOT_PATH}/devops/python/cicd:lint.toml.example:lint.toml" \
     "${CURR_REPO_ROOT_PATH}/.agents/workflows:sds-exec.md.example:sds-exec.md" \
 )

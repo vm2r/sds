@@ -25,30 +25,42 @@ citest = "fmt lint check"
 [python]
 interpreter_constraints = ["==3.14.*"]
 enable_resolves = true
-default_resolve = "resolver_python_3_14"
+default_resolve = "resolve_python_3_14"
 
 [python.resolves]
-resolver_python_3_14 = "src/py/3rdparty/resolver_python_3_14.lock"
-resolver_citest = "src/3rdparty/python/citest_resolve.lock"
+resolve_python_3_14 = "src/py/3rdparty/python/resolve_python_3_14.lock"
+resolve_citest = "src/3rdparty/python/resolve_citest.lock"
 
 [docformatter]
 args = ["--wrap-summaries=100", "--wrap-descriptions=100"]
 
-# [flake8]
-# install_from_resolve = "citest_resolve"
-# config = "devops/python/lint.toml"
-# 
-# [isort]
-# install_from_resolve = "citest_resolve"
-# config = "devops/python/lint.toml"
-# 
-# [black]
-# install_from_resolve = "citest_resolve"
-# config = "devops/python/lint.toml"
-# 
-# [mypy]
-# install_from_resolve = "citest_resolve"
-# config = "devops/python/lint.toml"
-# args = [
-#   "--check-untyped-defs",
-# ]
+[flake8]
+install_from_resolve = "citest_resolve"
+config = "devops/python/lint.toml"
+
+[isort]
+install_from_resolve = "citest_resolve"
+config = "devops/python/lint.toml"
+
+[black]
+install_from_resolve = "citest_resolve"
+config = "devops/python/lint.toml"
+
+[mypy]
+install_from_resolve = "citest_resolve"
+config = "devops/python/lint.toml"
+args = [
+  "--check-untyped-defs",
+]
+
+[test]
+use_coverage = true
+output = "all"
+
+[coverage-py]
+global_report = true
+report = ["html", "console"]
+
+[pytest]
+install_from_resolve = "citest"
+args = ["--no-header", "-vvv"]

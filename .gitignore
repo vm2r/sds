@@ -5,3 +5,4 @@ sds.conf
 __pycache__
 *.bak
 *.code-workspace
+/.pants.d
