@@ -16,13 +16,16 @@ export SDS_PRINT_HELP_SCRIPT := $(SDS_ROOT_IN_HOST)/bootstrap/print-help.sh
 
 SHELL := /bin/bash
 
-.PHONY: sds-init sds-start sds-start-tag sds-stop sds-restart sds-restart-tag sds-reset print-vars help
+.PHONY: sds-init sds-init-revert sds-init-diff sds-start sds-start-tag sds-stop sds-restart sds-restart-tag sds-reset print-vars help
 
 sds-init: ## Initialize the SDS environment
 	@$(SDS_INIT_SCRIPT)
 
 sds-init-revert: ## Revert the SDS environment initialization (delete generated files)
 	@$(SDS_INIT_SCRIPT) --revert
+
+sds-init-diff: ## Show differences between .example templates and actual configuration files
+	@$(SDS_INIT_SCRIPT) --diff
 
 sds-start: ## Start the latest SDS environment
 	@$(MAKE) sds-start-tag tag="latest"

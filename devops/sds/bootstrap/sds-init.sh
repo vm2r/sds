@@ -84,6 +84,55 @@ function initialize_sds() {
     echo
 }
 
+# Shows the diff between each .example template (with placeholders resolved)
+# and the actual configuration file, so the user can review what they changed.
+function diff_sds() {
+    printf_color "blue" "DIFFING TEMPLATE vs ACTUAL CONFIGURATION FILES\n\n"
+
+    for entry in "${FILES_TO_COPY[@]}"; do
+        IFS=":" read -r folder example destination <<< "$entry"
+
+        target_path="${folder}/${destination}"
+        source_path="${folder}/${example}"
+
+        printf_color "blue" "  - ${destination}\n"
+        printf "    - Checking '${target_path}'... "
+
+        if [ ! -f "$target_path" ]; then
+            printf_color "yellow" "NOT FOUND (skipping)\n\n"
+            continue
+        fi
+        printf_color "green" "FOUND\n"
+
+        # Build a resolved copy of the template (same substitutions as initialize_sds)
+        temp_source=$(mktemp)
+        cp "$source_path" "$temp_source"
+        for placeholder_entry in "${PLACEHOLDERS[@]}"; do
+            IFS=":" read -r key value <<< "$placeholder_entry"
+            sed -i "" "s/{{${key}}}/${value}/g" "$temp_source"
+        done
+
+        if diff -q "$temp_source" "$target_path" > /dev/null 2>&1; then
+            printf_color "green" "    - Files are identical (no user edits detected)\n"
+        else
+            printf_color "red"  "    - Files differ — showing diff (template vs actual):\n"
+            diff --unified=2 "$temp_source" "$target_path" \
+                | tail -n +4 \
+                | while IFS= read -r line; do
+                    case "$line" in
+                        +*) printf_color "green" "      ${line}\n" ;;
+                        -*) printf_color "red"   "      ${line}\n" ;;
+                        *)  printf          "      ${line}\n" ;;
+                    esac
+                done
+        fi
+
+        rm -f "$temp_source"
+        echo
+    done
+    echo
+}
+
 # Reverts the SDS environment initialization by deleting all
 # generated configuration and workflow files.
 function revert_sds() {
@@ -117,12 +166,17 @@ function revert_sds() {
 
 # Parse arguments
 REVERT=false
+DIFF=false
 if [[ "${1:-}" == "--revert" ]]; then
     REVERT=true
+elif [[ "${1:-}" == "--diff" ]]; then
+    DIFF=true
 fi
 
 if [ "$REVERT" = true ]; then
     revert_sds
+elif [ "$DIFF" = true ]; then
+    diff_sds
 else
     initialize_sds
 fi
