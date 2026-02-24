@@ -36,19 +36,19 @@ args = ["--wrap-summaries=100", "--wrap-descriptions=100"]
 
 [flake8]
 install_from_resolve = "citest_resolve"
-config = "devops/python/lint.toml"
+config = "devops/python/cicd/lint.toml"
 
 [isort]
 install_from_resolve = "citest_resolve"
-config = "devops/python/lint.toml"
+config = "devops/python/cicd/lint.toml"
 
 [black]
 install_from_resolve = "citest_resolve"
-config = "devops/python/lint.toml"
+config = "devops/python/cicd/lint.toml"
 
 [mypy]
 install_from_resolve = "citest_resolve"
-config = "devops/python/lint.toml"
+config = "devops/python/cicd/lint.toml"
 args = [
   "--check-untyped-defs",
 ]
