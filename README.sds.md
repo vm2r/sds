@@ -14,14 +14,6 @@ For AI agents: Please always check `.agents/workflows/sds-exec.md` before execut
 
 ## How to use it?
 
-### Initialize the environment
-
-```bash
-make sds-init
-```
-This will copy template files, such as `sds.conf.example`, `sds.bashrc.example`, etc., to the appropriate locations. 
-
-You may need to edit some of these files after initialization to adjust the environment to your needs.
 
 ### Start the environment
 

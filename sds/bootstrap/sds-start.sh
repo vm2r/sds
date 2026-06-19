@@ -15,18 +15,18 @@ THIS_SCRIPT_PATH=$(dirname $0)
 #
 # INITIALIZE PATH AND PROJECT SPECIFIC CONFIG
 #
-if [ -z "${SDS_ROOT_IN_HOST:-}" ]; then
-    printf_color "red" "FATAL ERROR: Env var \"SDS_ROOT_IN_HOST\" is not set\n\n"
+if [ -z "${SDS_SDS_ROOT_PATH_IN_HOST:-}" ]; then
+    printf_color "red" "FATAL ERROR: Env var \"SDS_SDS_ROOT_PATH_IN_HOST\" is not set\n\n"
     printf_color "red" "Please set this variable before running this script ($0).\n\n"
     printf_color "red" "ABORTING\n\n"
     exit 1
 fi
 
 # Add the SDS utilities folder to the PATH
-PATH=${PATH}:${SDS_ROOT_IN_HOST}/opt/sds
+PATH=${PATH}:${SDS_SDS_ROOT_PATH_IN_HOST}/opt/sds
 
 # Load sds configuration
-source ${THIS_SCRIPT_PATH}/sds-load-config.sh
+source ${THIS_SCRIPT_PATH}/sds-check-config.sh
 
 
 #
@@ -113,8 +113,8 @@ printf "    - Name: ${SDS_SDS_DOCKER_NAME}\n"
 printf "    - Tag : ${SDS_RUN_VERSION_TARGET}\n\n"
 
 local_image_full="${SDS_SDS_DOCKER_NAME}:${SDS_RUN_VERSION_TARGET}"
-dockerfile_path="${SDS_ROOT_IN_HOST}/image-builder/Dockerfile"
-build_script="${SDS_ROOT_IN_HOST}/image-builder/build-local.sh"
+dockerfile_path="${SDS_SDS_ROOT_PATH_IN_HOST}/image-builder/Dockerfile"
+build_script="${SDS_SDS_ROOT_PATH_IN_HOST}/image-builder/build-local.sh"
 
 # Check if build script exists
 if [ ! -f "${build_script}" ]; then

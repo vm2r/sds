@@ -8,24 +8,16 @@
 # 
 # DON'T EDIT ANYTHING IN THIS SECTION
 #
-export SDS_INIT_SCRIPT       := $(SDS_ROOT_IN_HOST)/bootstrap/sds-init.sh
-export SDS_START_SCRIPT      := $(SDS_ROOT_IN_HOST)/bootstrap/sds-start.sh
-export SDS_STOP_SCRIPT       := $(SDS_ROOT_IN_HOST)/bootstrap/sds-stop.sh
-export SDS_RESET_SCRIPT      := $(SDS_ROOT_IN_HOST)/bootstrap/sds-reset.sh
-export SDS_PRINT_HELP_SCRIPT := $(SDS_ROOT_IN_HOST)/bootstrap/print-help.sh
+export SDS_START_SCRIPT      := $(SDS_SDS_ROOT_PATH_IN_HOST)/bootstrap/sds-start.sh
+export SDS_STOP_SCRIPT       := $(SDS_SDS_ROOT_PATH_IN_HOST)/bootstrap/sds-stop.sh
+export SDS_RESET_SCRIPT      := $(SDS_SDS_ROOT_PATH_IN_HOST)/bootstrap/sds-reset.sh
+export SDS_PRINT_HELP_SCRIPT := $(SDS_SDS_ROOT_PATH_IN_HOST)/bootstrap/print-help.sh
 
 SHELL := /bin/bash
 
-.PHONY: sds-init sds-init-revert sds-init-diff sds-start sds-start-tag sds-stop sds-restart sds-restart-tag sds-reset print-vars help
+.PHONY: sds sds-start sds-start-tag sds-stop sds-restart sds-restart-tag sds-reset print-vars help
 
-sds-init: ## Initialize the SDS environment
-	@$(SDS_INIT_SCRIPT)
-
-sds-init-revert: ## Revert the SDS environment initialization (delete generated files)
-	@$(SDS_INIT_SCRIPT) --revert
-
-sds-init-diff: ## Show differences between .example templates and actual configuration files
-	@$(SDS_INIT_SCRIPT) --diff
+sds: sds-start
 
 sds-start: ## Start the latest SDS environment
 	@$(MAKE) sds-start-tag tag="latest"

@@ -1,8 +1,8 @@
 ##
-## /Makefile
+## Makefile
 ##
 ## The Makefile at the root of the repo
-## This is a good template for all Makefile in thie rep
+## This is a good template for all Makefile in this repo
 ##
 
 #
@@ -10,8 +10,8 @@
 #
 
 # Includes the Makefile that imports other relevant Makefiles in the repo
-export CURR_REPO_ROOT_PATH := $(shell git rev-parse --show-toplevel)
-include $(CURR_REPO_ROOT_PATH)/Makefile.importer.mk
+export REPO_ROOT_PATH := $(shell git rev-parse --show-toplevel)
+include $(REPO_ROOT_PATH)/Makefile.importer.mk
 
 #
 # ADD YOUR CUSTOM MAKEFILE TARGETS AND IMPORTS BELOW THIS LINE

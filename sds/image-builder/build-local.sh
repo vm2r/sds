@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -eux
 
+REPO_ROOT_PATH=$(git rev-parse --show-toplevel)
+source ${REPO_ROOT_PATH}/sds.setenv.sh
+
+
 ##
 ## build-local.sh
 ##
@@ -9,20 +13,17 @@ set -eux
 ## This script is called by sds-start.sh
 ##
 
-if [[ -z "${SDS_ROOT_IN_HOST}" ]]; then
-    echo "SDS_ROOT_IN_HOST is not set. It should have been set before running this script ($0)."
+if [[ -z "${SDS_SDS_ROOT_PATH_IN_HOST}" ]]; then
+    echo "SDS_SDS_ROOT_PATH_IN_HOST is not set. It should have been set before running this script ($0)."
 	exit -1
 fi
-
-source ${SDS_ROOT_IN_HOST}/etc/sds.conf
-source ${SDS_ROOT_IN_HOST}/etc/sds.env
 
 if [[ -z "${SDS_SDS_DOCKER_NAME}" ]]; then
     echo "SDS_SDS_DOCKER_NAME is not set. It should have been set before running this script ($0)."
 	exit -1
 fi
 
-dockerfile_path=${SDS_ROOT_IN_HOST}/image-builder/Dockerfile
+dockerfile_path=${SDS_SDS_ROOT_PATH_IN_HOST}/image-builder/Dockerfile
 if [[ ! -f "${dockerfile_path}" ]]; then
     echo "Dockerfile not found at ${dockerfile_path}."
 	exit -1
@@ -67,7 +68,7 @@ docker image build \
 	--build-arg SDS_VERSION_DATE_TAG=${version_date_tag} \
 	--build-arg SDS_IMAGE_DESCRIPTION="${SDS_IMAGE_DESCRIPTION}" \
 	--build-arg SDS_SDS_ROOT_PATH_IN_CONTAINER="${SDS_SDS_ROOT_PATH_IN_CONTAINER}" \
-	${SDS_ROOT_IN_HOST}
+	${SDS_SDS_ROOT_PATH_IN_HOST}
 
 # Tag the image with the version date tag
 docker image tag \

@@ -2,6 +2,11 @@
 # BUILDS A SDS IMAGE 
 #
 
+ARG PULUMI_VERSION=3.247.0
+ARG PANTS_VERSION=2.32
+ARG PYENV_VERSION=2.7.2
+ARG	NVM_VERSION=0.40.5
+
 ##
 # THE "BASE OS" STAGE
 # This stage is used as a base for building intermediate stages
@@ -25,16 +30,15 @@ RUN set -eu; set +x; \
 ##
 # THE NODE STAGE (NVM)
 #
-# NVM
-#   Based on instruction at:
-#   https://github.com/nvm-sh/nvm	
+# Based on instructions at:
+# https://github.com/nvm-sh/nvm	
 #
 ##
 FROM base_os AS node-builder-stage
-ARG NVM_DOWNLOAD_URL=https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh
+ARG	NVM_VERSION
 RUN set -eu; set +x; \
 	printf "\n\n\nINSTALLING NODE\n\n\n"; \
-	curl --silent --show-error --location $NVM_DOWNLOAD_URL | bash; \
+	curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v${NVM_VERSION}/install.sh | bash; \
 	export NVM_DIR="/root/.nvm"; \
 	[ -s "${NVM_DIR}/nvm.sh" ] && \. "${NVM_DIR}/nvm.sh"; \
 	time nvm install v24.7.0;
@@ -47,14 +51,20 @@ RUN set -eu; set +x; \
 # as it takes a long time to build, so caching it is very benefical.  
 ##
 FROM base_os AS python-builder-stage
+ARG PYENV_VERSION
 ARG PYENV_DOWNLOAD_URL=https://pyenv.run
 RUN set -eu; set +x; \
-	printf "\n\n\nINSTALLING PYTHON\n\n\n"; \
+	printf "\n\n\nINSTALLING PYENV (${PYENV_VERSION})\n\n\n"; \
 	export PYENV_ROOT="/root/.pyenv"; \
 	export PATH="$PYENV_ROOT/bin:$PATH"; \
 	curl --silent --show-error --location $PYENV_DOWNLOAD_URL | bash; \
 	eval "$(pyenv init - bash)"; \
-	time pyenv install 3.14.0;
+	time (\
+	time pyenv install 3.13 & \
+	time pyenv install 3.14.0 & \
+	wait; \
+	); \
+	pyenv global 3.14.0 3.13;
 
 
 ##
@@ -64,9 +74,10 @@ RUN set -eu; set +x; \
 # https://www.pantsbuild.org/stable/docs/getting-started/installing-pants
 ##
 FROM base_os AS pants-builder-stage
+ARG PANTS_VERSION
 ARG PANTS_DOWNLOAD_URL=https://static.pantsbuild.org/setup/get-pants.sh
 RUN set -eu; set +x; \
-	printf "\n\n\nINSTALLING PANTS\n\n\n"; \
+	printf "\n\n\nINSTALLING PANTS (2.31)\n\n\n"; \
 	curl --silent --show-error --location $PANTS_DOWNLOAD_URL | bash -s -- --bin-dir /usr/local/bin;
 
 
@@ -77,14 +88,14 @@ RUN set -eu; set +x; \
 # https://www.pulumi.com/docs/iac/get-started/gcp/begin/
 ##
 FROM base_os AS pulumi-builder-stage
-ARG PULUMI_VERSION="latest"
+ARG PULUMI_VERSION
 ARG PULUMI_DOWNLOAD_URL=https://get.pulumi.com/
 RUN apt-get update -y && \
 	printf "\n\n\nINSTALLING PULUMI\n\n\n" && \
 	apt-get upgrade -y && apt-get install -y \
 	curl build-essential git; \
 	# Install the Pulumi SDK, including the CLI and language runtimes.
-	curl -fsSL $PULUMI_DOWNLOAD_URL | bash -s -- --version $PULUMI_VERSION;
+	curl -fsSL $PULUMI_DOWNLOAD_URL | bash -s -- --version "${PULUMI_VERSION}";
 
 ##
 # THE SDS ENVIRONMENT BUILDER STAGE
@@ -106,18 +117,28 @@ RUN set -eu; set +x; \
 	iptables libc-bin net-tools dnsutils \
 	inetutils-ftp inetutils-traceroute inetutils-ping inetutils-telnet \
 	coreutils git gh \
-	procps lsb-base lsb-release \
+	procps lsof lsb-base lsb-release \
 	zsh zplug sudo htop  \
 	less vim nano jq \
 	postgresql-client libpq-dev \
 	bc;
 
 # Install YQ (YAML)
-ARG YQ_DOWNLOAD_URL=https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+ARG TARGETARCH
 RUN set -eu; set +x; \
 	printf "\n\n\nINSTALLING YQ (YAML)\n\n\n"; \
-	wget $YQ_DOWNLOAD_URL -O /usr/bin/yq; \
+	wget "https://github.com/mikefarah/yq/releases/latest/download/yq_linux_${TARGETARCH}" -O /usr/bin/yq; \
 	chmod +x /usr/bin/yq
+
+# Install Cloud SQL Auth Proxy v2 (used by `make start-sql-proxy`).
+# Static binary — no extra deps. TARGETARCH (amd64|arm64) matches the
+# upstream release artifact suffix exactly.
+ARG CLOUD_SQL_PROXY_VERSION="2.21.3"
+RUN set -eu; set +x; \
+	printf "\n\n\nINSTALLING CLOUD SQL AUTH PROXY (${TARGETARCH})\n\n\n"; \
+	curl -o /usr/local/bin/cloud-sql-proxy https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v${CLOUD_SQL_PROXY_VERSION}/cloud-sql-proxy.linux.${TARGETARCH};  \
+	chmod +x /usr/local/bin/cloud-sql-proxy; \
+	cloud-sql-proxy --version
 
 
 ##
@@ -140,7 +161,7 @@ RUN set -eu; set +x; \
 	export PATH="$PYENV_ROOT/bin:$PATH"; \
 	eval "$(pyenv init - bash)"; 
 ENV PYENV_ROOT="/root/.pyenv"
-ENV PATH=${PYENV_ROOT}/bin:${PATH}
+ENV PATH=${PATH}:${PYENV_ROOT}/bin
 
 ## Copy from Node builder stage
 COPY --from=node-builder-stage /root/.nvm /root/.nvm
@@ -170,7 +191,7 @@ RUN set -eu; set +x; \
 # This is because the Google installer generates almos 1Gb of content in the image, 
 # instead of TonyMet's 350Mb 
 # https://cloud.google.com/sdk/docs/install#deb
-ENV PATH=/google-cloud-sdk/bin:${PATH}
+ENV PATH=${PATH}:/google-cloud-sdk/bin
 RUN set -eu; set +x; \
 	printf "\n\n\nINSTALLING GOOGLE CLOUD SDK for ${TARGETARCH}\n\n\n"; \
 	# Map Docker's architecture names to Google's naming convention
@@ -186,50 +207,24 @@ RUN set -eu; set +x; \
 	export PYENV_ROOT="/root/.pyenv"; \
 	export PATH="$PYENV_ROOT/bin:$PATH"; \
 	eval "$(pyenv init - bash)"; \
-	pyenv global 3.14; \
+	pyenv global 3.14.0 3.13; \
 	pyenv rehash; \
 	gcloud config set core/disable_usage_reporting true; \
 	gcloud config set component_manager/disable_update_check true; \
 	gcloud config set metrics/environment github_docker_image; \
-	gcloud components install -q beta; \
+	gcloud components install -q beta log-streaming; \
 	rm -rf $(find google-cloud-sdk/ -regex ".*/__pycache__") \
 	google-cloud-sdk/.install/.backup \
 	google-cloud-sdk/bin/anthoscli; \
 	gcloud --version
 
-
-# GOOGLE CLOUD STORAGE FUSE
-# Mount GCS buckets as local folders)
-# Based on instructions from:
-# https://cloud.google.com/storage/docs/cloud-storage-fuse/install
-# RUN set -eu; set +x; \
-# 	DEBIAN_FRONTEND=noninteractive; \
-# 	printf "\n\n\nINSTALLING GOOGLE GCS FUSE\n\n\n"; \
-# 	apt-get install gcsfuse $APTGET_OPTIONS; \
-# 	printf "\n\n\nCLEANING UP APT\n\n\n"; 	# THIS IS THE LAST APT LAYER SO CLEANUP all APT STUFF \
-# 	rm -rf /var/lib/apt/lists/* \
-# 	/var/cache/apt/* \
-# 	/usr/share/doc/* \
-# 	/usr/share/man/* \
-# 	/usr/share/locale/*; \
-# 	apt-get autoremove $APTGET_OPTIONS; \
-# 	apt-get clean $APTGET_OPTIONS; \
-# 	apt-get autoclean $APTGET_OPTIONS; \
-# 	apt-get check $APTGET_OPTIONS;
-
-
-# GOOGLE CLOUD DATAFORM-CLI
-# Based on instructions from:
-# https://cloud.google.com/dataform/docs/use-dataform-cli=
-# RUN set -eu; set +x; \
-# 	printf "\n\n\nINSTALLING GOOGLE DATAFORM CLI\n\n\n"; \
-# 	export NVM_DIR="/root/.nvm"; \
-# 	[ -s "${NVM_DIR}/nvm.sh" ] && \. "${NVM_DIR}/nvm.sh"; \
-# 	nvm use v24.7.0; \
-# 	npm i -g @dataform/cli@^3.0.29; \
-# 	printf "\n\n\nCLEANING UP NPM\n\n\n"; 	# THIS IS THE LAST NPM LAYER SO CLEANUP all NPM STUFF \
-# 	npm cache clean --force;
-
+# CLAUDE CODE
+# Install CLoude Code
+# Based in https://code.claude.com/docs/en/overview
+RUN set -eu; set +x; \
+	printf "\n\n\nINSTALLING CLAUDE CODE\n\n\n"; \
+	curl -fsSL https://claude.ai/install.sh | bash; 
+ENV PATH=${PATH}:${HOME}/.local/bin
 
 ##
 # THE FINAL SDS ENV IMAGE
@@ -267,6 +262,12 @@ LABEL sds_version_date_tag="${SDS_VERSION_DATE_TAG}"
 ENV SDS_VERSION_DATE_TAG="${SDS_VERSION_DATE_TAG}"
 RUN echo "${SDS_VERSION_DATE_TAG}" > /etc/sds_version_date_tag
 
+
+# Create the "sds" user
+RUN groupadd -g 10001 sds && \
+	useradd -m -u 10001 -g sds -s /bin/bash sds
+
+
 # The entrypoint contains many runtime initializations 
 # and an infinite loop to keep the container awake
-ENTRYPOINT ["sh", "-c", "exec bash ${SDS_SDS_ROOT_PATH_IN_CONTAINER}/opt/sds/container-entrypoint.sh"]
+ENTRYPOINT ["sh", "-c", "exec bash ${SDS_SDS_ROOT_PATH_IN_CONTAINER}/bootstrap/container-entrypoint.sh"]

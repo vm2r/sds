@@ -29,25 +29,25 @@ default_resolve = "resolve_python_3_14"
 
 [python.resolves]
 resolve_python_3_14 = "src/py/3rdparty/python/resolve_python_3_14.lock"
-resolve_citest = "src/3rdparty/python/resolve_citest.lock"
+resolve_citest = "src/py/3rdparty/resolve_citest.lock"
 
 [docformatter]
 args = ["--wrap-summaries=100", "--wrap-descriptions=100"]
 
 [flake8]
-install_from_resolve = "citest_resolve"
+install_from_resolve = "resolve_citest"
 config = "devops/python/cicd/lint.toml"
 
 [isort]
-install_from_resolve = "citest_resolve"
+install_from_resolve = "resolve_citest"
 config = "devops/python/cicd/lint.toml"
 
 [black]
-install_from_resolve = "citest_resolve"
+install_from_resolve = "resolve_citest"
 config = "devops/python/cicd/lint.toml"
 
 [mypy]
-install_from_resolve = "citest_resolve"
+install_from_resolve = "resolve_citest"
 config = "devops/python/cicd/lint.toml"
 args = [
   "--check-untyped-defs",
@@ -62,5 +62,5 @@ global_report = true
 report = ["html", "console"]
 
 [pytest]
-install_from_resolve = "citest"
+install_from_resolve = "resolve_citest"
 args = ["--no-header", "-vvv"]

@@ -14,7 +14,7 @@ printf "Usage: make TARGET [ARGS]\n"
 printf "  Available targets:\033[36m\033[0m\n"; 
 
 for makefile in ${MAKEFILE_LIST}; do 
-    STRIPPED_FILENAME=${makefile#$SDS_ROOT_IN_HOST/};
+    STRIPPED_FILENAME=${makefile#$SDS_SDS_ROOT_PATH_IN_HOST/};
     grep -E '^[a-zA-Z0-9_-]+:.*?##' "${makefile}" \
         | while IFS= read -r line; do 
         
