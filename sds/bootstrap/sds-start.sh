@@ -274,6 +274,7 @@ printf "  - BASHRC path: ${BASHRC_FILE}"
 
 printf "\n\n"
 docker exec -it \
+    --user sds \
     --env SDS_START_DIR=${SDS_START_DIR} \
     ${SDS_SDS_DOCKER_NAME} \
     bash --rcfile ${BASHRC_FILE}
