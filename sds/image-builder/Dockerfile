@@ -8,8 +8,8 @@ ARG PYENV_VERSION=2.7.2
 ARG	NVM_VERSION=0.40.5
 
 ##
-# THE "BASE OS" STAGE
-# This stage is used as a base for building intermediate stages
+## THE "BASE OS" STAGE
+## This stage is used as a base for building intermediate stages
 ##
 FROM buildpack-deps:bookworm AS base_os
 ARG APTGET_OPTIONS=-yqqq -o Dpkg::Progress-Fancy="0" -o APT::Color="0" -o Dpkg::Use-Pty="0" --no-install-recommends 
@@ -28,11 +28,10 @@ RUN set -eu; set +x; \
 
 
 ##
-# THE NODE STAGE (NVM)
-#
-# Based on instructions at:
-# https://github.com/nvm-sh/nvm	
-#
+## THE NODE STAGE (NVM)
+##
+## Based on instructions at:
+## https://github.com/nvm-sh/nvm	
 ##
 FROM base_os AS node-builder-stage
 ARG	NVM_VERSION
@@ -45,10 +44,10 @@ RUN set -eu; set +x; \
 
 
 ##
-# THE PYTHON STAGE
-#
-# Keep this Python installation stage in the very beginning of this Dockerfile
-# as it takes a long time to build, so caching it is very benefical.  
+## THE PYTHON STAGE
+##
+## Keep this Python installation stage in the very beginning of this Dockerfile
+## as it takes a long time to build, so caching it is very benefical.  
 ##
 FROM base_os AS python-builder-stage
 ARG PYENV_VERSION
@@ -68,10 +67,10 @@ RUN set -eu; set +x; \
 
 
 ##
-# THE PANTS STAGE
-#
-# Based on Pants installation instructions
-# https://www.pantsbuild.org/stable/docs/getting-started/installing-pants
+## THE PANTS STAGE
+##
+## Based on Pants installation instructions
+## https://www.pantsbuild.org/stable/docs/getting-started/installing-pants
 ##
 FROM base_os AS pants-builder-stage
 ARG PANTS_VERSION
@@ -82,10 +81,10 @@ RUN set -eu; set +x; \
 
 
 ##
-# THE PULUMI STAGE
-#
-# Based on Pulumi installation instructions
-# https://www.pulumi.com/docs/iac/get-started/gcp/begin/
+## THE PULUMI STAGE
+##
+## Based on Pulumi installation instructions
+## https://www.pulumi.com/docs/iac/get-started/gcp/begin/
 ##
 FROM base_os AS pulumi-builder-stage
 ARG PULUMI_VERSION
@@ -98,8 +97,8 @@ RUN apt-get update -y && \
 	curl -fsSL $PULUMI_DOWNLOAD_URL | bash -s -- --version "${PULUMI_VERSION}";
 
 ##
-# THE SDS ENVIRONMENT BUILDER STAGE
-# The OS to build the final SDS image
+## THE SDS ENVIRONMENT BUILDER STAGE
+## The OS to build the final SDS image
 ##
 FROM debian:bookworm-slim AS sds_env_builder-stage
 
@@ -142,8 +141,8 @@ RUN set -eu; set +x; \
 
 
 ##
-# THE TOOLS STAGE
-# Build a stage with tools (PYTHON, NODE, GCP, etc...)
+## THE TOOLS STAGE
+## Build a stage with tools (PYTHON, NODE, GCP, etc...)
 ##
 FROM sds_env_builder-stage AS tools-builder-stage
 
@@ -154,19 +153,23 @@ ARG APTGET_OPTIONS=-yqqq -o Dpkg::Progress-Fancy="0" -o APT::Color="0" -o Dpkg::
 
 SHELL ["/bin/bash", "-c"]
 
+## Create the "sds" user
+RUN groupadd -g 10001 sds && \
+	useradd --home-dir /home/sds -u 10001 -g sds -s /bin/bash sds;
+
 ## Copy from Python builder stage
-COPY --from=python-builder-stage /root/.pyenv /root/.pyenv
+COPY --from=python-builder-stage /root/.pyenv /opt/pyenv
 RUN set -eu; set +x; \
-	export PYENV_ROOT="/root/.pyenv"; \
+	export PYENV_ROOT="/opt/pyenv"; \
 	export PATH="$PYENV_ROOT/bin:$PATH"; \
 	eval "$(pyenv init - bash)"; 
-ENV PYENV_ROOT="/root/.pyenv"
+ENV PYENV_ROOT="/opt/pyenv"
 ENV PATH=${PATH}:${PYENV_ROOT}/bin
 
 ## Copy from Node builder stage
-COPY --from=node-builder-stage /root/.nvm /root/.nvm
-ENV NVM_DIR="/root/.nvm"
-
+COPY --from=node-builder-stage /root/.nvm /opt/nvm
+ENV NVM_DIR="/opt/nvm"
+ENV PATH=${PATH}:${NVM_DIR}
 
 ## Prepare APT environment for GCP tools
 ARG GCP_APT_PUBLIC_KEY_URL=https://packages.cloud.google.com/apt/doc/apt-key.gpg
@@ -204,8 +207,8 @@ RUN set -eu; set +x; \
 	tar xzf google-cloud-cli-linux-${GCP_ARCH}.tar.gz; \
 	rm google-cloud-cli-linux-${GCP_ARCH}.tar.gz; \
 	rm -rf /google-cloud-sdk/platform/bundledpythonunix; \
-	export PYENV_ROOT="/root/.pyenv"; \
-	export PATH="$PYENV_ROOT/bin:$PATH"; \
+	export PYENV_ROOT="/opt/pyenv"; \
+	export PATH="${PYENV_ROOT}/bin:${PATH}"; \
 	eval "$(pyenv init - bash)"; \
 	pyenv global 3.14.0 3.13; \
 	pyenv rehash; \
@@ -265,7 +268,7 @@ RUN echo "${SDS_VERSION_DATE_TAG}" > /etc/sds_version_date_tag
 
 # Create the "sds" user
 RUN groupadd -g 10001 sds && \
-	useradd -m -u 10001 -g sds -s /bin/bash sds
+	useradd --no-create-home -u 10001 -g sds -s /bin/bash sds
 
 
 # The entrypoint contains many runtime initializations 
