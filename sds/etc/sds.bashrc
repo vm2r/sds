@@ -283,7 +283,7 @@ alias mv='mv -i'
 # Change to the directory the user was when SDS was initialized 
 #
 if [ -n "$SDS_START_DIR" ] ; then
-    cd "$SDS_START_DIR"
+    cd ${SDS_START_DIR}
 fi
 
 #
@@ -295,13 +295,11 @@ rm -f ${HOME}/.sds/prompt_commands
 print_toast
 
 printf_color "blue" "Loading SDS environment variables\n"
-
-printf "  - Reading SDS project config file (${SDS_SDS_ROOT_PATH_IN_CONTAINER}/etc/sds.conf)............. "
-source ${SDS_SDS_ROOT_PATH_IN_CONTAINER}/etc/sds.conf
-printf_color "green" "DONE\n"
-
-printf "  - Reading SDS container env vars (${SDS_SDS_ROOT_PATH_IN_CONTAINER}/etc/sds.env)... "
-source ${SDS_SDS_ROOT_PATH_IN_CONTAINER}/etc/sds.env
+pwd
+ls -alrt
+ls -l ~/sds.setenv.sh
+printf "  - Reading SDS project config file (~/sds.setenv.sh)............. "
+source ~/sds.setenv.sh
 printf_color "green" "DONE\n"
 
 

@@ -37,25 +37,10 @@ touch ${DOCKER_ENV_FILE}
 # Volumes from host to be mounted in the container
 # Format: <host_path>:<container_path>
 
-# TODO (mauronr): See if we need /mnt/host or can we mount it directly.
-this_repo_path=$(git rev-parse --show-toplevel)
-this_repo_name=$(basename $(git remote get-url origin) .git)
 
-DEFAULT_VOLUMES_MAPPING=(
-    "${this_repo_path}:/${this_repo_name}"
-    "${HOME}/.gitconfig:/mnt/host/.gitconfig"
-    "${HOME}/.ssh:/mnt/host/.ssh"
-    "${SDS_SDS_ROOT_PATH_IN_HOST}:${SDS_SDS_ROOT_PATH_IN_CONTAINER}"
-)
-
-if [ -n "${SDS_VOLUMES_MAPPING:-}" ]; then
-    sds_all_volumes_mapping="${SDS_VOLUMES_MAPPING[@]} ${DEFAULT_VOLUMES_MAPPING[@]}"
-else
-    sds_all_volumes_mapping="${DEFAULT_VOLUMES_MAPPING[@]}"
-fi
 
 VOLUMES_ARGS=""
-for mapping in ${sds_all_volumes_mapping}; do
+for mapping in ${SDS_ALL_VOLUMES_MAPPING}; do
     host_path="${mapping%%:*}"
     container_path="${mapping#*:}"
     VOLUMES_ARGS+=" --mount type=bind,source=${host_path},destination=${container_path}"
@@ -106,11 +91,12 @@ if [ $? -ne 0 ]; then
 fi
 
 # Start the SDS container
+echo ${VOLUMES_ARGS}
 docker run -d \
     --name ${SDS_SDS_DOCKER_NAME} \
     ${tcp_ports_args} \
     --env-file ${DOCKER_ENV_FILE} \
-    --workdir /${this_repo_name} \
+    --workdir /${REPO_NAME} \
     ${VOLUMES_ARGS} \
     --mount type=volume,source=${SDS_SDS_ROOT_VOLUME_NAME},destination=/root \
     ${CAPABILITIES_ARGS} \

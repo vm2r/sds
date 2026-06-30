@@ -23,7 +23,7 @@ if [[ -z "${SDS_SDS_DOCKER_NAME}" ]]; then
 	exit -1
 fi
 
-dockerfile_path=${SDS_SDS_ROOT_PATH_IN_HOST}/image-builder/Dockerfile
+dockerfile_path=${SDS_SDS_ROOT_PATH_IN_HOST}/image-builder/Dockerfile.sds
 if [[ ! -f "${dockerfile_path}" ]]; then
     echo "Dockerfile not found at ${dockerfile_path}."
 	exit -1

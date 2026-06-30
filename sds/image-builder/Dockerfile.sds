@@ -1,0 +1,315 @@
+#
+# BUILDS A SDS IMAGE 
+#
+
+ARG	NVM_VERSION=0.40.5
+ARG NODE_VERSION=24.7.0
+
+ARG PYENV_VERSION=2.7.3
+ARG PYTHON_VERSIONS="3.14.3 3.13.12"
+
+ARG PULUMI_VERSION=3.247.0
+
+ARG PANTS_VERSION=2.32
+
+ARG CLOUD_SQL_PROXY_VERSION=2.21.3
+
+ARG TARGETARCH
+ARG SDS_VERSION_DATE_TAG
+ARG SDS_IMAGE_DESCRIPTION
+ARG SDS_SDS_ROOT_PATH_IN_CONTAINER
+
+ARG APTGET_OPTIONS=-yqqq -o Dpkg::Progress-Fancy="0" -o APT::Color="0" -o Dpkg::Use-Pty="0" --no-install-recommends 
+
+##
+## THE "BASE OS" STAGE
+## This stage is used as a base for building intermediate stages
+##
+FROM debian:bookworm-slim AS base_os
+ARG APTGET_OPTIONS
+ARG TARGETARCH
+
+SHELL ["/bin/bash", "-c"]
+
+#
+# BASIC TOOLS AND UTILITIES
+# These are needed by many of the installation steps below.
+# Other user utilities are installed later, to avoid invalidating the cache if more tools are added to the list
+#
+RUN set -eu; set +x; \
+	DEBIAN_FRONTEND=noninteractive; \
+	printf "\n\nPREPARING BASE OS\n\n"; \
+	apt-get update $APTGET_OPTIONS; \
+	apt-get upgrade $APTGET_OPTIONS; \
+	printf "\n\nINSTALLING BASIC APT PACKAGES\n\n"; \
+	apt-get install $APTGET_OPTIONS \
+	build-essential ca-certificates gnupg \
+	libssl-dev zlib1g-dev libbz2-dev libreadline-dev \
+	libsqlite3-dev libncursesw5-dev xz-utils tk-dev libffi-dev liblzma-dev \
+	make curl wget git; \
+	apt-get autoremove && apt-get clean && apt-get autoclean
+
+#
+# YQ (YAML processor)
+# Install yq (https://github.com/mikefarah/yq)
+# "sudo apt install yq" installs a different Python-based jq wrapper, NOT this one.
+#
+RUN set -eu; set +x; \
+	printf "\n\nINSTALLING YQ (YAML)\n\n"; \
+	wget "https://github.com/mikefarah/yq/releases/latest/download/yq_linux_${TARGETARCH}" -O /usr/bin/yq; \
+	chmod +x /usr/bin/yq
+
+
+#
+# SDS USER
+# Some tools and utilities are installed in the user space
+#
+ENV HOME=/home/sds
+RUN useradd \
+	--uid 10001 \
+	--home-dir ${HOME} --create-home \
+	--shell /bin/bash \
+	--user-group \
+	sds
+
+
+##
+## NODE (NVM)
+##
+## Based on instructions at:
+## https://github.com/nvm-sh/nvm	
+##
+FROM base_os AS node_stage
+ARG	NVM_VERSION
+ARG NODE_VERSION
+USER sds
+RUN set -eu; set +x; \
+	printf "\n\nINSTALLING NODE\n\n"; \
+	curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v${NVM_VERSION}/install.sh | bash; \
+	export NVM_DIR="${HOME}/.nvm"; \
+	[ -s "${NVM_DIR}/nvm.sh" ] && \. "${NVM_DIR}/nvm.sh"; \
+	time nvm install ${NODE_VERSION};
+ENV NVM_DIR=${HOME}/.nvm
+
+##
+## PYTHON
+##
+## Keep the Python installation at the very beginning of this Dockerfile
+## as it takes a long time to build, so caching it is very benefical.  
+##
+FROM node_stage AS python_stage
+ARG PYENV_VERSION
+ARG PYTHON_VERSIONS
+ARG PYENV_DOWNLOAD_URL=https://pyenv.run
+
+USER sds
+
+RUN echo "HOME IS: ${HOME}"; \
+	echo "PATH IS: ${PATH}"
+
+RUN set -eu; set +x; \
+	printf "\n\nINSTALLING PYENV (${PYENV_VERSION})\n"; \
+	export PYENV_ROOT=${HOME}/.pyenv ; \
+	export PATH=${PATH}:${PYENV_ROOT}/bin ; \
+	curl --silent --show-error --location $PYENV_DOWNLOAD_URL | bash; \
+	eval "$(pyenv init - bash)"; \
+	printf "\n\nInstalling PYTHONS (${PYTHON_VERSIONS})\n"; \
+	pyenv install ${PYTHON_VERSIONS}; \
+	pyenv global ${PYTHON_VERSIONS};
+
+ENV PYENV_ROOT=${HOME}/.pyenv
+ENV PATH=${PATH}:${PYENV_ROOT}/bin
+
+##
+## PANTSBUILD
+##
+## Based on Pants installation instructions
+## https://www.pantsbuild.org/stable/docs/getting-started/installing-pants
+##
+FROM python_stage AS pants_stage
+ARG PANTS_VERSION
+
+USER sds
+
+ARG PANTS_DOWNLOAD_URL=https://static.pantsbuild.org/setup/get-pants.sh
+RUN set -eu; set +x; \
+	printf "\n\nINSTALLING PANTS\n\n"; \
+	curl --proto '=https' --tlsv1.2 -fsSL https://static.pantsbuild.org/setup/get-pants.sh | bash
+
+ENV PATH=${PATH}:${HOME}/.local/bin
+
+##
+## PULUMI
+##
+## Based on Pulumi installation instructions
+## https://www.pulumi.com/docs/iac/get-started/gcp/begin/
+##
+FROM pants_stage AS pulumi_stage
+ARG PULUMI_VERSION
+ARG PULUMI_DOWNLOAD_URL=https://get.pulumi.com/
+
+USER sds
+
+RUN set -eu; set +x; \
+	printf "\n\nINSTALLING PULUMI (${PULUMI_VERSION})\n\n" && \
+	curl -fsSL $PULUMI_DOWNLOAD_URL | bash -s -- --version "${PULUMI_VERSION}";
+
+ENV PATH=${PATH}:${HOME}/.pulumi/bin
+
+##
+## LINUX UTILITIES
+## We install packages in several stages to leverage build cache
+## This is because the utilities installation can take a long time
+##
+FROM pulumi_stage AS linux_utilities_stage
+ARG APTGET_OPTIONS
+ARG CLOUD_SQL_PROXY_VERSION
+ARG TARGETARCH
+
+USER root
+
+RUN set -eu; set +x; \
+	DEBIAN_FRONTEND=noninteractive; \
+	printf "\n\nINSTALLING LINUX UTILITIES\n\n"; \
+	apt-get update $APTGET_OPTIONS; \
+	apt-get upgrade $APTGET_OPTIONS; \
+	apt-get install $APTGET_OPTIONS \
+	wget curl ncat netcat-traditional tcptraceroute \
+	iptables libc-bin net-tools dnsutils \
+	inetutils-ftp inetutils-traceroute inetutils-ping inetutils-telnet \
+	coreutils git gh \
+	procps lsof lsb-base lsb-release \
+	zsh zplug sudo htop  \
+	less vim nano jq \
+	postgresql-client libpq-dev \
+	bc; \
+	apt-get autoremove && apt-get clean && apt-get autoclean
+
+
+# Install Cloud SQL Auth Proxy v2 (used by `make start-sql-proxy`).
+# Static binary — no extra deps. TARGETARCH (amd64|arm64) matches the
+# upstream release artifact suffix exactly.
+USER root
+RUN set -eu; set +x; \
+	printf "\n\nINSTALLING CLOUD SQL AUTH PROXY (${TARGETARCH})\n\n"; \
+	curl -o /usr/local/bin/cloud-sql-proxy https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v${CLOUD_SQL_PROXY_VERSION}/cloud-sql-proxy.linux.${TARGETARCH};  \
+	chmod +x /usr/local/bin/cloud-sql-proxy; \
+	cloud-sql-proxy --version
+
+
+##
+## GOOGLE CLOUD SDK (gcloud CLI)
+##
+## Based on TonyMet's Gcloud-Lite
+## https://github.com/tonymet/gcloud-lite/blob/master/Dockerfile
+##
+## This is because the Google installer generates almos 1Gb of content in the image, 
+## instead of TonyMet's 350Mb 
+## https://cloud.google.com/sdk/docs/install#deb
+##
+FROM linux_utilities_stage AS google_cloud_sdk_stage
+ARG APTGET_OPTIONS
+ARG PYENV_ROOT
+ARG TARGETARCH
+
+USER root
+
+# Prepare APT environment for GCP tools
+ARG GCP_APT_PUBLIC_KEY_URL=https://packages.cloud.google.com/apt/doc/apt-key.gpg
+RUN set -eu; set +x; \
+	printf "\n\nINSTALLING GOOGLE CLOUD APT KEYS\n\n"; \
+	export GCP_GPG_KEY="/usr/share/keyrings/cloud.google.gpg"; \
+	curl $GCP_APT_PUBLIC_KEY_URL \
+	--silent --show-error --location \
+	| gpg --dearmor -o ${GCP_GPG_KEY};\
+	echo "deb [signed-by=${GCP_GPG_KEY}] https://packages.cloud.google.com/apt cloud-sdk main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list ; \
+	export GCSFUSE_REPO="gcsfuse-$(lsb_release -c -s)"; \
+	echo "deb [signed-by=${GCP_GPG_KEY}] https://packages.cloud.google.com/apt ${GCSFUSE_REPO} main" | tee -a /etc/apt/sources.list.d/gcsfuse.list; \
+	printf "\n\nUPDATING PACKAGES\n\n"; \
+	apt-get update $APTGET_OPTIONS; \
+	apt-get upgrade $APTGET_OPTIONS; \
+	apt-get autoremove && apt-get clean && apt-get autoclean 
+
+
+USER sds
+WORKDIR /home/sds
+
+RUN set -eu; set +x; \
+	printf "\n\nINSTALLING GOOGLE CLOUD SDK for ${TARGETARCH}\n"; \
+	if [ "$TARGETARCH" = "arm64" ]; then \
+	export GCP_ARCH="arm"; \
+	else \
+	export GCP_ARCH="x86_64"; \
+	fi; \
+	pwd; \
+	export SDK_URL="https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-linux-${GCP_ARCH}.tar.gz"; \
+	printf "Downloading google cloud sdk: ${SDK_URL}\n"; \
+	curl -s -O ${SDK_URL}; \
+	printf "Unpacking google cloud sdk for ${TARGETARCH} architecture\n"; \
+	tar xzf google-cloud-cli-linux-${GCP_ARCH}.tar.gz; \
+	printf "Configuring GCloud Python Path\n"; \
+	export PYENV_ROOT=${HOME}/.pyenv ; \
+	export PATH="${PYENV_ROOT}/bin:${PATH}:${HOME}/google-cloud-sdk/bin"; \
+	eval "$(pyenv init - bash)"; \
+	pyenv global 3.14.3 3.13.12; \
+	pyenv rehash; \
+	printf "Configuring GCloud\n"; \
+	gcloud config set core/disable_usage_reporting true; \
+	gcloud config set component_manager/disable_update_check true; \
+	gcloud config set metrics/environment github_docker_image; \
+	gcloud components install -q beta log-streaming; \
+	printf "Cleaning up GCLoud installation\n"; \
+	rm google-cloud-cli-linux-${GCP_ARCH}.tar.gz; \
+	rm -rf ${HOME}/google-cloud-sdk/platform/bundledpythonunix; \
+	rm -rf $(find google-cloud-sdk/ -regex ".*/__pycache__") google-cloud-sdk/.install/.backup google-cloud-sdk/bin/anthoscli; \
+	printf "Checking gcloud installation\n"; \
+	PYENV_VERSION=3.13.12 \
+	gcloud --version
+
+ENV PATH=${PATH}:${HOME}/google-cloud-sdk/bin
+
+##
+## CLAUDE CODE
+##
+## Based in https://code.claude.com/docs/en/overview
+##
+FROM google_cloud_sdk_stage AS claude_code_stage
+
+USER sds
+RUN set -eu; set +x; \
+	printf "\n\nINSTALLING CLAUDE CODE\n\n"; \
+	curl -fsSL https://claude.ai/install.sh | bash; 
+ENV PATH=${PATH}:${HOME}/.local/bin
+
+
+##
+## FINAL IMAGE
+##
+FROM claude_code_stage AS final_image
+
+ARG SDS_SDS_ROOT_PATH_IN_CONTAINER
+ARG SDS_IMAGE_DESCRIPTION
+ARG SDS_VERSION_DATE_TAG
+
+## Copy the host aliases file
+USER root
+COPY /etc/host.aliases /etc/host.aliases
+
+
+## Copy the entrypoint script
+ENV PATH=${PATH}:${SDS_SDS_ROOT_PATH_IN_CONTAINER}/opt/sds
+
+LABEL description="${SDS_IMAGE_DESCRIPTION}"
+LABEL sds_version_date_tag="${SDS_VERSION_DATE_TAG}"
+
+ENV SDS_VERSION_DATE_TAG="${SDS_VERSION_DATE_TAG}"
+RUN echo "${SDS_VERSION_DATE_TAG}" > /etc/sds_version_date_tag
+
+ENV SDS_SDS_ROOT_PATH_IN_CONTAINER="${SDS_SDS_ROOT_PATH_IN_CONTAINER}"
+
+
+
+# The entrypoint contains many runtime initializations 
+# and an infinite loop to keep the container awake
+USER root
+ENTRYPOINT ["sh", "-c", "exec bash ${SDS_SDS_ROOT_PATH_IN_CONTAINER}/bootstrap/container-entrypoint.sh"]

@@ -66,8 +66,8 @@ export SDS_SDS_DOCKER_NAME="sds-${REPO_NAME}"
 
 # On the host, this is an absolute path
 export SDS_SDS_ROOT_PATH_IN_HOST="${REPO_ROOT_PATH}/sds"
-# In the container, this is relative to the "sds" user home folder (~)
-export SDS_SDS_ROOT_PATH_IN_CONTAINER="/home/sds"
+# In the container, this is relative to the "sds" user home folder
+export SDS_SDS_ROOT_PATH_IN_CONTAINER="/home/sds/sds"
 
 
 #
@@ -77,3 +77,26 @@ export SDS_SDS_CLI_ROOT="${SDS_SDS_ROOT_PATH_IN_CONTAINER}/opt/sds/cli"
 
 # The name of the volume that will be created to persist root folder in the container
 export SDS_SDS_ROOT_VOLUME_NAME="${SDS_SDS_DOCKER_NAME}-root-volume"
+
+
+#
+# SDS CONTAINER VOLUMES MAPPING
+#
+# The following are the default volumes mapping, that will be used if no
+# other volumes mapping are specified in the SDS_VOLUMES_MAPPING variable
+# 
+
+
+# TODO (mauronr): See if we need /mnt/host or can we mount it directly.
+export SDS_DEFAULT_VOLUMES_MAPPING=(
+    "${REPO_ROOT_PATH}:/home/sds/"
+    "${HOME}/.gitconfig:/mnt/host/.gitconfig"
+    "${HOME}/.ssh:/mnt/host/.ssh"
+)
+#     "${SDS_SDS_ROOT_PATH_IN_HOST}:${SDS_SDS_ROOT_PATH_IN_CONTAINER}"
+
+if [ -n "${SDS_VOLUMES_MAPPING:-}" ]; then
+    export SDS_ALL_VOLUMES_MAPPING="${SDS_VOLUMES_MAPPING[@]} ${SDS_DEFAULT_VOLUMES_MAPPING[@]}"
+else
+    export SDS_ALL_VOLUMES_MAPPING="${SDS_DEFAULT_VOLUMES_MAPPING[@]}"
+fi

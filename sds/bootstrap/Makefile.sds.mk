@@ -17,7 +17,7 @@ SHELL := /bin/bash
 
 .PHONY: sds sds-start sds-start-tag sds-stop sds-restart sds-restart-tag sds-reset print-vars help
 
-sds: sds-start
+sds: sds-start  ## Alias to `make sds-start`
 
 sds-start: ## Start the latest SDS environment
 	@$(MAKE) sds-start-tag tag="latest"
@@ -25,7 +25,7 @@ sds-start: ## Start the latest SDS environment
 sds-start-tag: ## Start a SDS environment with a specific tag (make sds-start-tag tag="<tag>")
 	@$(SDS_START_SCRIPT) $(if $(tag),--image-tag "$(tag)",)
 
-sds-stop: ## Stop the SDS
+sds-stop: ## Stop the current SDS container 
 	@$(SDS_STOP_SCRIPT)
 
 sds-restart: ## Remove the current SDS container and start the latest SDS

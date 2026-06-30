@@ -22,8 +22,11 @@ fi
 # Check if all configuration variables have been set in sds.conf
 #
 MANDATORY_VARS=(
+    "REPO_ROOT_PATH"
+    "REPO_NAME"
     "SDS_SDS_DOCKER_NAME"
     "SDS_SDS_ROOT_PATH_IN_CONTAINER"
+    "SDS_ALL_VOLUMES_MAPPING"
 )
 
 for var in "${MANDATORY_VARS[@]}"; do

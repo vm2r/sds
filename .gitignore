@@ -5,3 +5,4 @@ __pycache__
 *.bak
 *.code-workspace
 /.pants.d
+.bash_history

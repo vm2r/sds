@@ -61,7 +61,9 @@ done
 
 # SDS_HOST_UNAME is sent to the container as an ENVVAR, so it knows the OS it's running on
 export SDS_HOST_UNAME="$(uname -a)"
-export SDS_START_DIR=`git rev-parse --show-prefix | sed 's/.$$//'`
+
+SDS_RELATIVE_START_DIR=`git rev-parse --show-prefix | sed 's/.$$//'`
+export SDS_START_DIR="/home/sds/${SDS_RELATIVE_START_DIR}"
 
 # The BASHRC to use
 export BASHRC_FILE="${SDS_SDS_ROOT_PATH_IN_CONTAINER}/etc/sds.bashrc"
@@ -83,10 +85,10 @@ printf "\n"
 
 
 ##
-## CHECK IF DOCKER IS RUNNING
+## 1. CHECK IF DOCKER INFRASTRUCTURE IS PROPERLY SET UP 
 ##
 set +eu
-printf_color "blue" "Docker installation\n" 
+printf_color "blue" "Docker infrastructure\n" 
 
 printf "  - Checking Docker daemon status... "
 docker info > /dev/null 2>&1
@@ -101,7 +103,7 @@ set -eu
 
 
 ##
-## CHECK THE SDS IMAGE
+## 2. CHECK WHETHER THE CURRENT SDS IMAGE IS UP TO DATE 
 ##
 printf_color "blue" "\nSDS Docker Image\n"
 
@@ -205,9 +207,9 @@ else
     fi
 fi
 
-#
-# CHECK IF THE SDS CONTAINER EXISTS AND IS RUNNING
-#
+##
+## 3. CHECK WHETHER THE SDS CONTAINER EXISTS AND IS RUNNING
+##
 printf_color "blue" "\nSDS Docker container\n"
 
 printf "  - Container name: ${SDS_SDS_DOCKER_NAME}\n"
@@ -264,7 +266,7 @@ fi
 
 
 ##
-## START THE SDS SHELL
+## 4. START THE SDS SHELL
 ##
 printf_color "blue" "\nSDS shell\n"
 set +e

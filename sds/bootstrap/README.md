@@ -1,6 +1,6 @@
 # SDS Bootstrap Helpers
 
-Scripts do be executed in the host machone (not inside the SDS container) to start and stop the SDS container.
+Scripts do be executed in the host machine (not inside the SDS container) to start and stop the SDS container.
 
 Main commands:
 
