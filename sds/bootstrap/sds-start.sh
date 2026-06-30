@@ -66,7 +66,7 @@ SDS_RELATIVE_START_DIR=`git rev-parse --show-prefix | sed 's/.$$//'`
 export SDS_START_DIR="/home/sds/${SDS_RELATIVE_START_DIR}"
 
 # The BASHRC to use
-export BASHRC_FILE="${SDS_SDS_ROOT_PATH_IN_CONTAINER}/etc/sds.bashrc"
+export BASHRC_FILE="${SDS_SDS_ROOT_PATH_IN_CONTAINER}/etc/.bashrc.sds"
 
 printf "\n\n"
 printf_color "blue" "= = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =\n" 
@@ -115,7 +115,7 @@ printf "    - Name: ${SDS_SDS_DOCKER_NAME}\n"
 printf "    - Tag : ${SDS_RUN_VERSION_TARGET}\n\n"
 
 local_image_full="${SDS_SDS_DOCKER_NAME}:${SDS_RUN_VERSION_TARGET}"
-dockerfile_path="${SDS_SDS_ROOT_PATH_IN_HOST}/image-builder/Dockerfile"
+dockerfile_path="${SDS_SDS_ROOT_PATH_IN_HOST}/image-builder/Dockerfile.sds"
 build_script="${SDS_SDS_ROOT_PATH_IN_HOST}/image-builder/build-local.sh"
 
 # Check if build script exists
@@ -125,7 +125,7 @@ if [ ! -f "${build_script}" ]; then
 fi
 
 # Check if image exists
-printf "  - Looking for Docker image........ "
+printf "  - Looking for a previously built SDS Docker image........ "
 if ! docker inspect --type=image "${local_image_full}" > /dev/null 2>&1; then
     # No SDS image in the locak docker registry
 
@@ -147,7 +147,7 @@ else
     # There's a previously build image in the local docker registry
     printf_color "green" "FOUND\n"
     
-    printf "  - Checking Docker image status.... "
+    printf "  - Checking the previously SDS Docker image status........ "
     # Image exists, check if outdated
     if [ -f "${dockerfile_path}" ]; then
         # Get Dockerfile modification time
@@ -186,12 +186,12 @@ else
         elif [ "${image_created_epoch}" -lt "${dockerfile_mtime}" ]; then
             printf_color "yellow" "OUTDATED\n"
             printf "    - Image timestamp........ : $(date -r ${image_created_epoch})\n"
-            printf "    - Dockerfile timestamp... : $(date -r ${dockerfile_mtime})).\n"
-            read -p "- Do you want to rebuild it? [y/N] " -n 1 -r
-            echo
+            printf "    - Dockerfile timestamp... : $(date -r ${dockerfile_mtime})\n\n"
+            read -p "    - Do you want to rebuild it? [y/N] " -n 1 -r
             if [[ $REPLY =~ ^[Yy]$ ]]; then  
                 build_log_file=$(mktemp)
-                printf "    - Rebuilding image. Logs at: ${build_log_file}\n"
+                printf "\n      - Rebuilding image.\n"
+                printf "        - Logs at: ${build_log_file}\n"
 
                 "${build_script}" "${dockerfile_path}" "${SDS_SDS_DOCKER_NAME}" > "${build_log_file}" 2>&1
                 
